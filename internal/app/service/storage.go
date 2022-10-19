@@ -19,21 +19,21 @@ func NewStorage() *Storage {
 	}
 }
 
-func (s *Storage) CreateShortURL(url string) (shortUrl int64) {
+func (s *Storage) CreateShortURL(url string) (shortURL int64) {
 	s.mx.Lock()
 	s.urls[s.lastID] = url
 	s.mx.Unlock()
 
-	shortUrl = s.lastID
+	shortURL = s.lastID
 	s.lastID++
-	return shortUrl
+	return shortURL
 }
 
 func (s *Storage) GetFullURL(shortUrl int64) (string, error) {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
-	if longUrl, ok := s.urls[shortUrl]; ok {
-		return longUrl, nil
+	if longURL, ok := s.urls[shortUrl]; ok {
+		return longURL, nil
 	} else {
 		return "", fmt.Errorf("url dont exist")
 	}

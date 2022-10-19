@@ -16,15 +16,15 @@ type app struct {
 func (a *app) handleRequest(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		a.getUrl(w, r)
+		a.getURL(w, r)
 	case http.MethodPost:
-		a.addUrl(w, r)
+		a.addURL(w, r)
 	default:
 		w.WriteHeader(http.StatusBadRequest)
 	}
 }
 
-func (a *app) addUrl(w http.ResponseWriter, r *http.Request) {
+func (a *app) addURL(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -47,28 +47,26 @@ func (a *app) addUrl(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (a *app) getUrl(w http.ResponseWriter, r *http.Request) {
+func (a *app) getURL(w http.ResponseWriter, r *http.Request) {
 	url := strings.Split(r.URL.Path, "/")
 	if len(url) != 1 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	shortUrl, err := strconv.ParseInt(url[0], 10, 64)
+	shortURL, err := strconv.ParseInt(url[0], 10, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	fullUrl, err := a.storage.GetFullURL(shortUrl)
+	fullURL, err := a.storage.GetFullURL(shortURL)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	w.WriteHeader(http.StatusTemporaryRedirect)
-	w.Header().Set("Location", fullUrl)
-
-	return
+	w.Header().Set("Location", fullURL)
 }
 
 func main() {
