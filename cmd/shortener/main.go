@@ -1,12 +1,18 @@
 package main
 
 import (
+	"fmt"
 	"go-axesthump-shortener/internal/app/service"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+)
+
+const (
+	serverURL = "localhost:8080"
+	protocol  = "http://"
 )
 
 type app struct {
@@ -36,7 +42,8 @@ func (a *app) addURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	url := string(body)
-	shortURL, err := a.storage.CreateShortURL(url)
+	fmt.Println(r.URL.Host)
+	shortURL, err := a.storage.CreateShortURL(protocol+serverURL+"/", url)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -77,5 +84,5 @@ func main() {
 	mux := http.NewServeMux()
 	storage := app{storage: service.NewStorage()}
 	mux.HandleFunc("/", storage.handleRequest)
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Fatal(http.ListenAndServe(serverURL, mux))
 }
