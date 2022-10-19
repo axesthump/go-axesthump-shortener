@@ -36,7 +36,12 @@ func (a *app) addURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	url := string(body)
-	response := strconv.FormatInt(a.storage.CreateShortURL(url), 10)
+	shortUrl, err := a.storage.CreateShortURL(url)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	response := strconv.FormatInt(shortUrl, 10)
 
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write([]byte(response))
@@ -60,8 +65,7 @@ func (a *app) getURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	endURL, err := a.storage.GetFullURL(shortURL)
-	fullURL := "http://" + r.Host + "/" + endURL
+	fullURL, err := a.storage.GetFullURL(shortURL)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
