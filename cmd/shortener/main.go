@@ -48,7 +48,7 @@ func (a *app) addURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *app) getURL(w http.ResponseWriter, r *http.Request) {
-	url := strings.Split(r.URL.Path, "/")
+	url := strings.Split(strings.TrimPrefix(r.URL.Path, "/"), "/")
 	if len(url) != 1 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
