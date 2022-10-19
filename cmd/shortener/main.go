@@ -60,13 +60,14 @@ func (a *app) getURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fullURL, err := a.storage.GetFullURL(shortURL)
+	endURL, err := a.storage.GetFullURL(shortURL)
+	fullURL := "http://" + r.Host + "/" + endURL
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusTemporaryRedirect)
 	w.Header().Set("Location", fullURL)
+	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
 func main() {
