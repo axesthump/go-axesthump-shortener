@@ -8,28 +8,28 @@ import (
 type Storage struct {
 	mx     *sync.RWMutex
 	urls   map[int64]string
-	lastId int64
+	lastID int64
 }
 
 func NewStorage() *Storage {
 	return &Storage{
 		mx:     &sync.RWMutex{},
 		urls:   make(map[int64]string, 0),
-		lastId: int64(0),
+		lastID: int64(0),
 	}
 }
 
-func (s *Storage) CreateShortUrl(url string) (shortUrl int64) {
+func (s *Storage) CreateShortURL(url string) (shortUrl int64) {
 	s.mx.Lock()
-	s.urls[s.lastId] = url
+	s.urls[s.lastID] = url
 	s.mx.Unlock()
 
-	shortUrl = s.lastId
-	s.lastId++
+	shortUrl = s.lastID
+	s.lastID++
 	return shortUrl
 }
 
-func (s *Storage) GetFullUrl(shortUrl int64) (string, error) {
+func (s *Storage) GetFullURL(shortUrl int64) (string, error) {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
 	if longUrl, ok := s.urls[shortUrl]; ok {
