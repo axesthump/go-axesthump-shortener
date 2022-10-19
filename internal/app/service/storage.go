@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -20,10 +21,10 @@ func NewStorage() *Storage {
 	}
 }
 
-func (s *Storage) CreateShortURL(url string) (int64, error) {
+func (s *Storage) CreateShortURL(url string) (string, error) {
 	urlElements := strings.Split(url, "/")
 	if len(urlElements) < 4 {
-		return 0, fmt.Errorf("bad url")
+		return "", fmt.Errorf("bad url")
 	}
 
 	endpoint := ""
@@ -42,7 +43,8 @@ func (s *Storage) CreateShortURL(url string) (int64, error) {
 	s.urls[s.lastID] = beginURL + endpoint
 	s.mx.Unlock()
 
-	shortURL := s.lastID
+	shortEndpoint := strconv.FormatInt(s.lastID, 10)
+	shortURL := beginURL + shortEndpoint
 	s.lastID++
 	return shortURL, nil
 }

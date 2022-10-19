@@ -36,15 +36,14 @@ func (a *app) addURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	url := string(body)
-	shortUrl, err := a.storage.CreateShortURL(url)
+	shortURL, err := a.storage.CreateShortURL(url)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	response := strconv.FormatInt(shortUrl, 10)
 
 	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write([]byte(response))
+	_, err = w.Write([]byte(shortURL))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
