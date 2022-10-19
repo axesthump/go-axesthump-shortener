@@ -29,10 +29,10 @@ func (s *Storage) CreateShortURL(url string) (shortURL int64) {
 	return shortURL
 }
 
-func (s *Storage) GetFullURL(shortUrl int64) (string, error) {
+func (s *Storage) GetFullURL(shortURL int64) (string, error) {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
-	if longURL, ok := s.urls[shortUrl]; ok {
+	if longURL, ok := s.urls[shortURL]; ok {
 		return longURL, nil
 	} else {
 		return "", fmt.Errorf("url dont exist")
