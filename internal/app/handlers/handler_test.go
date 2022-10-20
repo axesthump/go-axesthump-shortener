@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go-axesthump-shortener/internal/app/repository"
 	"io"
 	"net/http"
@@ -29,107 +30,6 @@ func (m *mockStorage) GetFullURL(shortURL int64) (string, error) {
 		return "", errors.New("error")
 	} else {
 		return longURL, nil
-	}
-}
-
-func TestAppHandler_HandleRequest(t *testing.T) {
-	type fields struct {
-		storage    repository.Repository
-		requestURL string
-		method     string
-		body       []byte
-	}
-	type want struct {
-		statusCode int
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   want
-	}{
-		{
-			name: "check with wrong url request",
-			fields: fields{
-				requestURL: "/some/wrong/url",
-				method:     http.MethodGet,
-				storage: &mockStorage{
-					needError: false,
-				},
-			},
-			want: want{
-				statusCode: http.StatusBadRequest,
-			},
-		},
-		{
-			name: "check with put request",
-			fields: fields{
-				requestURL: "/l",
-				method:     http.MethodPut,
-				storage: &mockStorage{
-					needError: false,
-				},
-			},
-			want: want{
-				statusCode: http.StatusBadRequest,
-			},
-		},
-		{
-			name: "check with delete request",
-			fields: fields{
-				requestURL: "/l",
-				method:     http.MethodPut,
-				storage: &mockStorage{
-					needError: false,
-				},
-			},
-			want: want{
-				statusCode: http.StatusBadRequest,
-			},
-		},
-		{
-			name: "check with get url request",
-			fields: fields{
-				requestURL: "/0",
-				method:     http.MethodGet,
-				storage: &mockStorage{
-					needError: false,
-				},
-			},
-			want: want{
-				statusCode: http.StatusTemporaryRedirect,
-			},
-		},
-		{
-			name: "check with post url request",
-			fields: fields{
-				requestURL: "/",
-				method:     http.MethodPost,
-				storage: &mockStorage{
-					needError: false,
-				},
-				body: []byte("url"),
-			},
-			want: want{
-				statusCode: http.StatusCreated,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			a := &AppHandler{
-				storage: tt.fields.storage,
-			}
-
-			request := httptest.NewRequest(tt.fields.method, tt.fields.requestURL, bytes.NewBuffer(tt.fields.body))
-			handler := http.HandlerFunc(a.HandleRequest)
-			w := httptest.NewRecorder()
-
-			handler.ServeHTTP(w, request)
-
-			res := w.Result()
-			defer res.Body.Close()
-			assert.Equal(t, tt.want.statusCode, res.StatusCode)
-		})
 	}
 }
 
@@ -195,7 +95,7 @@ func TestAppHandler_getURL(t *testing.T) {
 				},
 			},
 			want: want{
-				statusCode: http.StatusBadRequest,
+				statusCode: http.StatusMethodNotAllowed,
 				location:   "",
 			},
 		},
@@ -208,7 +108,7 @@ func TestAppHandler_getURL(t *testing.T) {
 				},
 			},
 			want: want{
-				statusCode: http.StatusBadRequest,
+				statusCode: http.StatusNotFound,
 				location:   "",
 			},
 		},
@@ -216,16 +116,22 @@ func TestAppHandler_getURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
-				storage: tt.fields.storage,
+				repo: tt.fields.storage,
+			}
+			r := NewRouter(a)
+			ts := httptest.NewServer(r)
+			defer ts.Close()
+			a.baseURL = ts.URL
+			request, err := http.NewRequest(http.MethodGet, ts.URL+tt.fields.requestURL, nil)
+			require.NoError(t, err)
+
+			transport := http.Transport{}
+			res, err := transport.RoundTrip(request)
+			require.NoError(t, err)
+			if err != nil {
+				t.Fatal(err)
 			}
 
-			request := httptest.NewRequest(http.MethodGet, tt.fields.requestURL, nil)
-			handler := http.HandlerFunc(a.HandleRequest)
-			w := httptest.NewRecorder()
-
-			handler.ServeHTTP(w, request)
-
-			res := w.Result()
 			defer res.Body.Close()
 			assert.Equal(t, tt.want.statusCode, res.StatusCode)
 			if len(tt.want.location) != 0 {
@@ -276,9 +182,7 @@ func TestAppHandler_addURL(t *testing.T) {
 				body: []byte("url"),
 			},
 			want: want{
-				statusCode:  http.StatusBadRequest,
-				body:        "",
-				contentType: "text/plain",
+				statusCode: http.StatusMethodNotAllowed,
 			},
 		},
 		{
@@ -299,16 +203,18 @@ func TestAppHandler_addURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
-				storage: tt.fields.storage,
+				repo: tt.fields.storage,
 			}
+			r := NewRouter(a)
+			ts := httptest.NewServer(r)
+			defer ts.Close()
+			a.baseURL = ts.URL
+			request, err := http.NewRequest(http.MethodPost, ts.URL+tt.fields.requestURL, bytes.NewBuffer(tt.fields.body))
 
-			request := httptest.NewRequest(http.MethodPost, tt.fields.requestURL, bytes.NewBuffer(tt.fields.body))
-			handler := http.HandlerFunc(a.HandleRequest)
-			w := httptest.NewRecorder()
-
-			handler.ServeHTTP(w, request)
-
-			res := w.Result()
+			res, err := http.DefaultClient.Do(request)
+			if err != nil {
+				t.Fatal(err)
+			}
 			assert.Equal(t, tt.want.statusCode, res.StatusCode)
 			assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"))
 			if len(tt.want.body) != 0 {

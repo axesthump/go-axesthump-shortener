@@ -1,82 +1,78 @@
 package handlers
 
 import (
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"go-axesthump-shortener/internal/app/repository"
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
-)
-
-const (
-	serverURL = "localhost:8080"
-	protocol  = "http://"
 )
 
 type AppHandler struct {
-	storage repository.Repository
+	repo    repository.Repository
+	baseURL string
+	Router  chi.Router
 }
 
-func NewAppHandler() *AppHandler {
-	return &AppHandler{
-		storage: repository.NewStorage(),
+func NewRouter(appHandler *AppHandler) chi.Router {
+	r := chi.NewRouter()
+	r.Get("/{shortURL}", appHandler.getURL())
+	r.Post("/", appHandler.addURL())
+
+	return r
+}
+
+func NewAppHandler(baseURL string, repo repository.Repository) *AppHandler {
+	h := &AppHandler{
+		repo:    repo,
+		baseURL: baseURL,
+	}
+	h.Router = NewRouter(h)
+	h.Router.Use(middleware.Logger)
+	h.Router.Use(middleware.Recoverer)
+	return h
+}
+
+func (a *AppHandler) addURL() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "text/plain")
+
+		defer r.Body.Close()
+		body, err := io.ReadAll(r.Body)
+		if err != nil || len(body) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		url := string(body)
+		shortURL := a.repo.CreateShortURL(a.baseURL, url)
+
+		w.WriteHeader(http.StatusCreated)
+		_, err = w.Write([]byte(shortURL))
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	}
 }
 
-func (a *AppHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		a.getURL(w, r)
-	case http.MethodPost:
-		a.addURL(w, r)
-	default:
-		w.WriteHeader(http.StatusBadRequest)
-	}
-}
+func (a *AppHandler) getURL() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		url := chi.URLParam(r, "shortURL")
 
-func (a *AppHandler) addURL(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/plain")
-	if r.URL.Path != "/" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+		shortURL, err := strconv.ParseInt(url, 10, 64)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
-	defer r.Body.Close()
-	body, err := io.ReadAll(r.Body)
-	if err != nil || len(body) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	url := string(body)
-	shortURL := a.storage.CreateShortURL(protocol+serverURL+"/", url)
-
-	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write([]byte(shortURL))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		fullURL, err := a.repo.GetFullURL(shortURL)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Location", fullURL)
+		w.WriteHeader(http.StatusTemporaryRedirect)
 	}
 
-}
-
-func (a *AppHandler) getURL(w http.ResponseWriter, r *http.Request) {
-	url := strings.Split(strings.TrimPrefix(r.URL.Path, "/"), "/")
-	if len(url) != 1 {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	shortURL, err := strconv.ParseInt(url[0], 10, 64)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	fullURL, err := a.storage.GetFullURL(shortURL)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	w.Header().Set("Location", fullURL)
-	w.WriteHeader(http.StatusTemporaryRedirect)
 }
