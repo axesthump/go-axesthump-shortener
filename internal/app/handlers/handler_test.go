@@ -127,6 +127,7 @@ func TestAppHandler_HandleRequest(t *testing.T) {
 			handler.ServeHTTP(w, request)
 
 			res := w.Result()
+			defer res.Body.Close()
 			assert.Equal(t, tt.want.statusCode, res.StatusCode)
 		})
 	}
@@ -225,6 +226,7 @@ func TestAppHandler_getURL(t *testing.T) {
 			handler.ServeHTTP(w, request)
 
 			res := w.Result()
+			defer res.Body.Close()
 			assert.Equal(t, tt.want.statusCode, res.StatusCode)
 			if len(tt.want.location) != 0 {
 				assert.Equal(t, tt.want.location, res.Header.Get("Location"))
