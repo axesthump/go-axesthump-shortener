@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"fmt"
-	"go-axesthump-shortener/internal/app/service"
+	"go-axesthump-shortener/internal/app/repository"
 	"io"
 	"net/http"
 	"strconv"
@@ -15,12 +15,12 @@ const (
 )
 
 type AppHandler struct {
-	storage *service.Storage
+	storage repository.Repository
 }
 
 func NewAppHandler() *AppHandler {
 	return &AppHandler{
-		storage: service.NewStorage(),
+		storage: repository.NewStorage(),
 	}
 }
 

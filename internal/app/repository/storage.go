@@ -1,10 +1,15 @@
-package service
+package repository
 
 import (
 	"fmt"
 	"strconv"
 	"sync"
 )
+
+type Repository interface {
+	CreateShortURL(beginURL string, url string) (string, error)
+	GetFullURL(shortURL int64) (string, error)
+}
 
 type Storage struct {
 	mx     *sync.RWMutex
