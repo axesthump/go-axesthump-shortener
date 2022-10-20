@@ -210,11 +210,10 @@ func TestAppHandler_addURL(t *testing.T) {
 			defer ts.Close()
 			a.baseURL = ts.URL
 			request, err := http.NewRequest(http.MethodPost, ts.URL+tt.fields.requestURL, bytes.NewBuffer(tt.fields.body))
-
+			require.NoError(t, err)
 			res, err := http.DefaultClient.Do(request)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
+
 			assert.Equal(t, tt.want.statusCode, res.StatusCode)
 			assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"))
 			if len(tt.want.body) != 0 {

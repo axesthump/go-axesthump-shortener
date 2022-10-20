@@ -17,6 +17,8 @@ type AppHandler struct {
 
 func NewRouter(appHandler *AppHandler) chi.Router {
 	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 	r.Get("/{shortURL}", appHandler.getURL())
 	r.Post("/", appHandler.addURL())
 
@@ -29,8 +31,6 @@ func NewAppHandler(baseURL string, repo repository.Repository) *AppHandler {
 		baseURL: baseURL,
 	}
 	h.Router = NewRouter(h)
-	h.Router.Use(middleware.Logger)
-	h.Router.Use(middleware.Recoverer)
 	return h
 }
 
