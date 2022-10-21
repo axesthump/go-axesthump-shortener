@@ -26,11 +26,9 @@ func NewStorage() *Storage {
 }
 
 func (s *Storage) CreateShortURL(beginURL string, url string) string {
-
 	s.mx.Lock()
+	defer s.mx.Unlock()
 	s.urls[s.lastID] = url
-	s.mx.Unlock()
-
 	shortEndpoint := strconv.FormatInt(s.lastID, 10)
 	shortURL := beginURL + shortEndpoint
 	s.lastID++
