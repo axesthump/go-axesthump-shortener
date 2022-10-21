@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"go-axesthump-shortener/internal/app/repository"
@@ -15,12 +17,21 @@ type AppHandler struct {
 	Router  chi.Router
 }
 
+type requestURL struct {
+	URL string `json:"url"`
+}
+
+type response struct {
+	Result string `json:"result"`
+}
+
 func NewRouter(appHandler *AppHandler) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Get("/{shortURL}", appHandler.getURL())
 	r.Post("/", appHandler.addURL())
+	r.Post("/api/shorten", appHandler.addURLRest())
 
 	return r
 }
@@ -34,26 +45,67 @@ func NewAppHandler(baseURL string, repo repository.Repository) *AppHandler {
 	return h
 }
 
+func (a *AppHandler) addURLRest() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "application/json")
+
+		body, err := readBody(w, r.Body)
+		if err != nil {
+			return
+		}
+
+		var requestURL requestURL
+
+		err = json.Unmarshal(body, &requestURL)
+		if err != nil || len(requestURL.URL) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		shortURL := a.repo.CreateShortURL(a.baseURL, requestURL.URL)
+		resp := response{Result: shortURL}
+		buf := bytes.NewBuffer([]byte{})
+		encoder := json.NewEncoder(buf)
+		encoder.SetEscapeHTML(false)
+		err = encoder.Encode(resp)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		sendResponse(w, buf.Bytes())
+	}
+}
+
 func (a *AppHandler) addURL() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "text/plain")
 
-		defer r.Body.Close()
-		body, err := io.ReadAll(r.Body)
-		if err != nil || len(body) == 0 {
-			w.WriteHeader(http.StatusBadRequest)
+		body, err := readBody(w, r.Body)
+		if err != nil {
 			return
 		}
 		url := string(body)
 		shortURL := a.repo.CreateShortURL(a.baseURL, url)
 
-		w.WriteHeader(http.StatusCreated)
-		_, err = w.Write([]byte(shortURL))
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+		sendResponse(w, []byte(shortURL))
 	}
+}
+
+func sendResponse(w http.ResponseWriter, res []byte) {
+	w.WriteHeader(http.StatusCreated)
+	_, err := w.Write(res)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+}
+
+func readBody(w http.ResponseWriter, body io.ReadCloser) ([]byte, error) {
+	defer body.Close()
+	bodyBytes, err := io.ReadAll(body)
+	if err != nil || len(bodyBytes) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return nil, err
+	}
+	return bodyBytes, nil
 }
 
 func (a *AppHandler) getURL() http.HandlerFunc {
