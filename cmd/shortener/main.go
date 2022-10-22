@@ -10,7 +10,7 @@ import (
 
 type serverConfig struct {
 	ServerAddr string `env:"SERVER_ADDRESS"`
-	BaseUrl    string `env:"BASE_URL"`
+	BaseURL    string `env:"BASE_URL"`
 }
 
 func main() {
@@ -19,6 +19,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	appHandler := handlers.NewAppHandler(serverConfig.BaseUrl, repository.NewStorage())
+	appHandler := handlers.NewAppHandler(serverConfig.BaseURL, repository.NewStorage())
 	log.Fatal(http.ListenAndServe(serverConfig.ServerAddr, appHandler.Router))
 }
