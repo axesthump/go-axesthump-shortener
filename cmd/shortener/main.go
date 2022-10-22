@@ -9,16 +9,16 @@ import (
 )
 
 type serverConfig struct {
-	ServerAddr string `env:"SERVER_ADDRESS"`
-	BaseURL    string `env:"BASE_URL"`
+	ServerAddr string `env:"SERVER_ADDRESS,required"`
+	BaseURL    string `env:"BASE_URL,required"`
 }
 
 func main() {
-	serverConfig := serverConfig{}
-	err := env.Parse(&serverConfig)
-	if err != nil {
+	var serverConfig serverConfig
+	if err := env.Parse(&serverConfig); err != nil {
 		panic(err)
 	}
-	appHandler := handlers.NewAppHandler(serverConfig.BaseURL, repository.NewStorage())
+
+	appHandler := handlers.NewAppHandler(serverConfig.BaseURL+"/", repository.NewStorage())
 	log.Fatal(http.ListenAndServe(serverConfig.ServerAddr, appHandler.Router))
 }
