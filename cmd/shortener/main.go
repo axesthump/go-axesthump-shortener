@@ -1,24 +1,17 @@
 package main
 
 import (
-	"github.com/caarlos0/env/v6"
 	"go-axesthump-shortener/internal/app/handlers"
 	"go-axesthump-shortener/internal/app/repository"
+	"go-axesthump-shortener/internal/app/util"
 	"log"
 	"net/http"
 )
 
-type serverConfig struct {
-	ServerAddr string `env:"SERVER_ADDRESS,required"`
-	BaseURL    string `env:"BASE_URL,required"`
-}
-
 func main() {
-	var serverConfig serverConfig
-	if err := env.Parse(&serverConfig); err != nil {
-		panic(err)
-	}
+	serverAddr := util.GetEnvOrDefault("SERVER_ADDRESS", "localhost:8080")
+	baseURL := util.GetEnvOrDefault("BASE_URL", "http://localhost:8080/")
 
-	appHandler := handlers.NewAppHandler(serverConfig.BaseURL+"/", repository.NewStorage())
-	log.Fatal(http.ListenAndServe(serverConfig.ServerAddr, appHandler.Router))
+	appHandler := handlers.NewAppHandler(baseURL, repository.NewStorage())
+	log.Fatal(http.ListenAndServe(serverAddr, appHandler.Router))
 }
