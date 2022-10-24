@@ -7,7 +7,7 @@ import (
 )
 
 type Repository interface {
-	CreateShortURL(beginURL string, url string) (string, error)
+	CreateShortURL(beginURL string, url string) string
 	GetFullURL(shortURL int64) (string, error)
 }
 
@@ -25,7 +25,7 @@ func NewStorage() *Storage {
 	}
 }
 
-func (s *Storage) CreateShortURL(beginURL string, url string) (string, error) {
+func (s *Storage) CreateShortURL(beginURL string, url string) string {
 
 	s.mx.Lock()
 	s.urls[s.lastID] = url
@@ -34,7 +34,7 @@ func (s *Storage) CreateShortURL(beginURL string, url string) (string, error) {
 	shortEndpoint := strconv.FormatInt(s.lastID, 10)
 	shortURL := beginURL + shortEndpoint
 	s.lastID++
-	return shortURL, nil
+	return shortURL
 }
 
 func (s *Storage) GetFullURL(shortURL int64) (string, error) {

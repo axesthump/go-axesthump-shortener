@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"go-axesthump-shortener/internal/app/repository"
 	"io"
 	"net/http"
@@ -36,6 +35,7 @@ func (a *AppHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *AppHandler) addURL(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "text/plain")
 	if r.URL.Path != "/" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -43,17 +43,12 @@ func (a *AppHandler) addURL(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
-	if err != nil {
+	if err != nil || len(body) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	url := string(body)
-	fmt.Println(r.URL.Host)
-	shortURL, err := a.storage.CreateShortURL(protocol+serverURL+"/", url)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	shortURL := a.storage.CreateShortURL(protocol+serverURL+"/", url)
 
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write([]byte(shortURL))
