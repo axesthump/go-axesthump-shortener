@@ -55,6 +55,8 @@ func (ls *LocalStorage) CreateShortURL(beginURL string, url string) (string, err
 }
 
 func (ls *LocalStorage) GetFullURL(shortURL int64) (string, error) {
+	ls.mx.RLock()
+	defer ls.mx.RUnlock()
 	decoder := gob.NewDecoder(ls.file)
 	for {
 		var urlData urlData
