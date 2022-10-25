@@ -22,8 +22,8 @@ type mockStorage struct {
 	needError bool
 }
 
-func (m *mockStorage) CreateShortURL(beginURL string, url string) string {
-	return shortURL
+func (m *mockStorage) CreateShortURL(beginURL string, url string) (string, error) {
+	return shortURL, nil
 }
 
 func (m *mockStorage) GetFullURL(shortURL int64) (string, error) {
@@ -32,6 +32,10 @@ func (m *mockStorage) GetFullURL(shortURL int64) (string, error) {
 	} else {
 		return longURL, nil
 	}
+}
+
+func (m *mockStorage) Close() error {
+	return nil
 }
 
 func TestAppHandler_getURL(t *testing.T) {

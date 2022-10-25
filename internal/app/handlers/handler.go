@@ -61,7 +61,11 @@ func (a *AppHandler) addURLRest() http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		shortURL := a.repo.CreateShortURL(a.baseURL, requestURL.URL)
+		shortURL, err := a.repo.CreateShortURL(a.baseURL, requestURL.URL)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		resp := response{Result: shortURL}
 		buf := bytes.NewBuffer([]byte{})
 		encoder := json.NewEncoder(buf)
@@ -84,28 +88,10 @@ func (a *AppHandler) addURL() http.HandlerFunc {
 			return
 		}
 		url := string(body)
-		shortURL := a.repo.CreateShortURL(a.baseURL, url)
+		shortURL, _ := a.repo.CreateShortURL(a.baseURL, url)
 
 		sendResponse(w, []byte(shortURL))
 	}
-}
-
-func sendResponse(w http.ResponseWriter, res []byte) {
-	w.WriteHeader(http.StatusCreated)
-	_, err := w.Write(res)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-	}
-}
-
-func readBody(w http.ResponseWriter, body io.ReadCloser) ([]byte, error) {
-	defer body.Close()
-	bodyBytes, err := io.ReadAll(body)
-	if err != nil || len(bodyBytes) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		return nil, err
-	}
-	return bodyBytes, nil
 }
 
 func (a *AppHandler) getURL() http.HandlerFunc {
@@ -126,5 +112,22 @@ func (a *AppHandler) getURL() http.HandlerFunc {
 		w.Header().Set("Location", fullURL)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	}
+}
 
+func sendResponse(w http.ResponseWriter, res []byte) {
+	w.WriteHeader(http.StatusCreated)
+	_, err := w.Write(res)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+}
+
+func readBody(w http.ResponseWriter, body io.ReadCloser) ([]byte, error) {
+	defer body.Close()
+	bodyBytes, err := io.ReadAll(body)
+	if err != nil || len(bodyBytes) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return nil, err
+	}
+	return bodyBytes, nil
 }
