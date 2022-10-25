@@ -1,24 +1,18 @@
 package repository
 
 import (
-	"encoding/gob"
+	"bufio"
 	"errors"
-	"io"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 )
 
-type urlData struct {
-	ShortURL int64
-	LongURL  string
-}
-
 type LocalStorage struct {
-	mx      *sync.RWMutex
-	file    *os.File
-	encoder *gob.Encoder
-	lastID  int64
+	mx     *sync.RWMutex
+	file   *os.File
+	lastID int64
 }
 
 func NewLocalStorage(filename string) (*LocalStorage, error) {
@@ -26,12 +20,30 @@ func NewLocalStorage(filename string) (*LocalStorage, error) {
 	if err != nil {
 		return nil, err
 	}
+	lastID := getLastId(file)
 	return &LocalStorage{
-		mx:      &sync.RWMutex{},
-		file:    file,
-		encoder: gob.NewEncoder(file),
-		lastID:  int64(0),
+		mx:     &sync.RWMutex{},
+		file:   file,
+		lastID: lastID,
 	}, nil
+}
+
+func getLastId(file *os.File) int64 {
+	var lastID int64
+	var err error
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		data := string(scanner.Bytes())
+		urlData := strings.Split(data, "~")
+		if len(urlData) != 2 {
+			panic(errors.New("bad data in file"))
+		}
+		lastID, err = strconv.ParseInt(urlData[0], 10, 64)
+		if err != nil {
+			panic(errors.New("bad data in file"))
+		}
+	}
+	return lastID + 1
 }
 
 func (ls *LocalStorage) CreateShortURL(beginURL string, url string) (string, error) {
@@ -39,13 +51,19 @@ func (ls *LocalStorage) CreateShortURL(beginURL string, url string) (string, err
 	defer ls.mx.Unlock()
 	shortEndpoint := strconv.FormatInt(ls.lastID, 10)
 	shortURL := beginURL + shortEndpoint
+	data := strconv.FormatInt(ls.lastID, 10) + "~" + url
 
-	urlData := urlData{
-		ls.lastID,
-		url,
+	wr := bufio.NewWriter(ls.file)
+	_, err := wr.Write([]byte(data))
+	if err != nil {
+		return "", err
 	}
 
-	err := ls.encoder.Encode(&urlData)
+	err = wr.WriteByte('\n')
+	if err != nil {
+		return "", err
+	}
+	err = wr.Flush()
 	if err != nil {
 		return "", err
 	}
@@ -57,18 +75,24 @@ func (ls *LocalStorage) CreateShortURL(beginURL string, url string) (string, err
 func (ls *LocalStorage) GetFullURL(shortURL int64) (string, error) {
 	ls.mx.RLock()
 	defer ls.mx.RUnlock()
-	decoder := gob.NewDecoder(ls.file)
-	for {
-		var urlData urlData
-		err := decoder.Decode(&urlData)
+	fileForRead, err := os.OpenFile(ls.file.Name(), os.O_RDONLY, 0777)
+	if err != nil {
+		return "", err
+	}
+	defer fileForRead.Close()
+	scanner := bufio.NewScanner(fileForRead)
+	for scanner.Scan() {
+		data := string(scanner.Bytes())
+		urlData := strings.Split(data, "~")
+		if len(urlData) != 2 {
+			panic(errors.New("bad data in file"))
+		}
+		elementShortURL, err := strconv.ParseInt(urlData[0], 10, 64)
 		if err != nil {
-			if err == io.EOF {
-				break
-			}
 			return "", err
 		}
-		if urlData.ShortURL == shortURL {
-			return urlData.LongURL, nil
+		if elementShortURL == shortURL {
+			return urlData[1], nil
 		}
 	}
 	return "", errors.New("url nor found")
