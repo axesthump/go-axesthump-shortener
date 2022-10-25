@@ -2,7 +2,6 @@ package config
 
 import (
 	"flag"
-	"fmt"
 	"go-axesthump-shortener/internal/app/repository"
 	"go-axesthump-shortener/internal/app/util"
 	"os"
@@ -24,7 +23,7 @@ func CreateAppConfig() (*AppConfig, error) {
 		appConfig.ServerAddr = util.GetEnvOrDefault("SERVER_ADDRESS", "localhost:8080")
 	}
 	if appConfig.storagePath == "" {
-		os.Getenv("FILE_STORAGE_PATH")
+		appConfig.storagePath = os.Getenv("FILE_STORAGE_PATH")
 	}
 
 	var err error
@@ -36,7 +35,6 @@ func CreateAppConfig() (*AppConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("App config: serverAddr: %s baseURL: %s storage: %s\n", appConfig.ServerAddr, appConfig.BaseURL, appConfig.storagePath)
 	return appConfig, nil
 }
 
