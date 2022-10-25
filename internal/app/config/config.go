@@ -27,8 +27,6 @@ func CreateAppConfig() (*AppConfig, error) {
 		os.Getenv("FILE_STORAGE_PATH")
 	}
 
-	fmt.Printf("App confib - %v\n", appConfig)
-
 	var err error
 	if len(appConfig.storagePath) == 0 {
 		appConfig.Repo = repository.NewInMemoryStorage()
@@ -38,6 +36,7 @@ func CreateAppConfig() (*AppConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("App confib - %v\n", appConfig)
 	return appConfig, nil
 }
 
@@ -45,6 +44,7 @@ func getConsoleArgs() *AppConfig {
 	serverAddr := flag.String("a", "", "server address")
 	baseURL := flag.String("b", "", "base url")
 	storagePath := flag.String("f", "", "storage path")
+	flag.Parse()
 
 	return &AppConfig{
 		ServerAddr:  *serverAddr,
