@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"go-axesthump-shortener/internal/app/repository"
 	"go-axesthump-shortener/internal/app/util"
 	"os"
@@ -25,6 +26,8 @@ func CreateAppConfig() (*AppConfig, error) {
 	if appConfig.storagePath == "" {
 		os.Getenv("FILE_STORAGE_PATH")
 	}
+
+	fmt.Printf("App confib - %v\n", appConfig)
 
 	var err error
 	if len(appConfig.storagePath) == 0 {
