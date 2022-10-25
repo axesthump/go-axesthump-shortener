@@ -10,8 +10,8 @@ import (
 )
 
 type urlData struct {
-	shortURL int64
-	longURL  string
+	ShortURL int64
+	LongURL  string
 }
 
 type LocalStorage struct {
@@ -67,8 +67,8 @@ func (ls *LocalStorage) GetFullURL(shortURL int64) (string, error) {
 			}
 			return "", err
 		}
-		if urlData.shortURL == shortURL {
-			return urlData.longURL, nil
+		if urlData.ShortURL == shortURL {
+			return urlData.LongURL, nil
 		}
 	}
 	return "", errors.New("url nor found")
