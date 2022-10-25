@@ -20,7 +20,7 @@ func NewLocalStorage(filename string) (*LocalStorage, error) {
 	if err != nil {
 		return nil, err
 	}
-	lastID := getLastId(file)
+	lastID := getLastID(file)
 	return &LocalStorage{
 		mx:     &sync.RWMutex{},
 		file:   file,
@@ -28,7 +28,7 @@ func NewLocalStorage(filename string) (*LocalStorage, error) {
 	}, nil
 }
 
-func getLastId(file *os.File) int64 {
+func getLastID(file *os.File) int64 {
 	var lastID int64
 	var err error
 	scanner := bufio.NewScanner(file)

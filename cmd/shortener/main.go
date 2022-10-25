@@ -6,11 +6,9 @@ import (
 	"go-axesthump-shortener/internal/app/repository"
 	"log"
 	"net/http"
-	"os"
 )
 
 func main() {
-	os.Setenv("FILE_STORAGE_PATH", "./temp")
 	conf, err := config.CreateAppConfig()
 	defer func(Repo repository.Repository) {
 		err := Repo.Close()
