@@ -36,7 +36,7 @@ func CreateAppConfig() (*AppConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("App confib - %v\n", appConfig)
+	fmt.Printf("App config: serverAddr: %s baseURL: %s storage: %s\n", appConfig.ServerAddr, appConfig.BaseURL, appConfig.storagePath)
 	return appConfig, nil
 }
 
