@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	myMiddleware "go-axesthump-shortener/internal/app/middleware"
 	"go-axesthump-shortener/internal/app/repository"
 	"io"
 	"net/http"
@@ -27,6 +28,7 @@ type response struct {
 
 func NewRouter(appHandler *AppHandler) chi.Router {
 	r := chi.NewRouter()
+	r.Use(myMiddleware.Gzip)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Get("/{shortURL}", appHandler.getURL())
