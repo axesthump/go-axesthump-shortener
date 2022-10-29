@@ -34,6 +34,10 @@ func (m *mockStorage) GetFullURL(shortURL int64) (string, error) {
 	}
 }
 
+func (m *mockStorage) GetAllURLs(beginURL string) []repository.URLInfo {
+	return make([]repository.URLInfo, 0)
+}
+
 func (m *mockStorage) Close() error {
 	return nil
 }

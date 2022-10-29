@@ -41,6 +41,22 @@ func (s *InMemoryStorage) GetFullURL(shortURL int64) (string, error) {
 	}
 }
 
+func (s *InMemoryStorage) GetAllURLs(beginURL string) []URLInfo {
+	s.mx.RLock()
+	defer s.mx.RUnlock()
+
+	urls := make([]URLInfo, 0, len(s.urls))
+	for shortURL, originalURL := range s.urls {
+		short := strconv.FormatInt(shortURL, 10)
+		url := URLInfo{
+			ShortURL:    beginURL + short,
+			OriginalURL: originalURL,
+		}
+		urls = append(urls, url)
+	}
+	return urls
+}
+
 func (s *InMemoryStorage) Close() error {
 	return nil
 }

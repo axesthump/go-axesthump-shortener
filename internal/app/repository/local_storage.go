@@ -98,6 +98,37 @@ func (ls *LocalStorage) GetFullURL(shortURL int64) (string, error) {
 	return "", errors.New("url nor found")
 }
 
+func (ls *LocalStorage) GetAllURLs(beginURL string) []URLInfo {
+	ls.mx.RLock()
+	defer ls.mx.RUnlock()
+	fileForRead, err := os.OpenFile(ls.file.Name(), os.O_RDONLY, 0777)
+	urls := make([]URLInfo, 0)
+	if err != nil {
+		return urls
+	}
+	defer fileForRead.Close()
+	scanner := bufio.NewScanner(fileForRead)
+	for scanner.Scan() {
+		data := string(scanner.Bytes())
+		urlData := strings.Split(data, "~")
+		if len(urlData) != 2 {
+			continue
+		}
+		shortURL, err := strconv.ParseInt(urlData[0], 10, 64)
+		if err != nil {
+			continue
+		}
+		shortEndpoint := strconv.FormatInt(shortURL, 10)
+		short := beginURL + shortEndpoint
+		url := URLInfo{
+			ShortURL:    short,
+			OriginalURL: urlData[1],
+		}
+		urls = append(urls, url)
+	}
+	return urls
+}
+
 func (ls *LocalStorage) Close() error {
 	return ls.file.Close()
 }

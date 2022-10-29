@@ -28,12 +28,18 @@ type response struct {
 
 func NewRouter(appHandler *AppHandler) chi.Router {
 	r := chi.NewRouter()
+	r.Use(myMiddleware.NewAuthService().Auth)
 	r.Use(myMiddleware.Gzip)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+
 	r.Get("/{shortURL}", appHandler.getURL())
 	r.Post("/", appHandler.addURL())
-	r.Post("/api/shorten", appHandler.addURLRest())
+
+	r.Route("/api", func(r chi.Router) {
+		r.Post("/shorten", appHandler.addURLRest())
+		r.Get("/user/urls", appHandler.listURLs())
+	})
 
 	return r
 }
@@ -113,6 +119,27 @@ func (a *AppHandler) getURL() http.HandlerFunc {
 		}
 		w.Header().Set("Location", fullURL)
 		w.WriteHeader(http.StatusTemporaryRedirect)
+	}
+}
+
+func (a *AppHandler) listURLs() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		urls := a.repo.GetAllURLs(a.baseURL)
+
+		if len(urls) == 0 {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		var resp []byte
+		var err error
+		if resp, err = json.Marshal(&urls); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		w.Write(resp)
 	}
 }
 
