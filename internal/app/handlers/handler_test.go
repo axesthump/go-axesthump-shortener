@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -21,8 +22,8 @@ type mockStorage struct {
 	needError bool
 }
 
-func (m *mockStorage) CreateShortURL(beginURL string, url string) string {
-	return shortURL
+func (m *mockStorage) CreateShortURL(beginURL string, url string) (string, error) {
+	return shortURL, nil
 }
 
 func (m *mockStorage) GetFullURL(shortURL int64) (string, error) {
@@ -31,6 +32,10 @@ func (m *mockStorage) GetFullURL(shortURL int64) (string, error) {
 	} else {
 		return longURL, nil
 	}
+}
+
+func (m *mockStorage) Close() error {
+	return nil
 }
 
 func TestAppHandler_getURL(t *testing.T) {
@@ -223,6 +228,110 @@ func TestAppHandler_addURL(t *testing.T) {
 					t.Fatal(err)
 				}
 				assert.Equal(t, tt.want.body, string(body))
+			}
+		})
+	}
+}
+
+func TestAppHandler_addURLRest(t *testing.T) {
+	type fields struct {
+		storage    repository.Repository
+		requestURL string
+		body       []byte
+	}
+	type want struct {
+		statusCode  int
+		body        string
+		contentType string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   want
+	}{
+		{
+			name: "check success add",
+			fields: fields{
+				requestURL: "/api/shorten",
+				storage: &mockStorage{
+					needError: false,
+				},
+				body: []byte(`{"url":"url"}`),
+			},
+			want: want{
+				statusCode:  http.StatusCreated,
+				body:        `{"result":"` + shortURL + `"}`,
+				contentType: "application/json",
+			},
+		},
+		{
+			name: "check add with bad body",
+			fields: fields{
+				requestURL: "/api/shorten",
+				storage: &mockStorage{
+					needError: false,
+				},
+				body: []byte(`{"url":"url"`),
+			},
+			want: want{
+				statusCode:  http.StatusBadRequest,
+				body:        "",
+				contentType: "application/json",
+			},
+		},
+		{
+			name: "check add with wrong body url type",
+			fields: fields{
+				requestURL: "/api/shorten",
+				storage: &mockStorage{
+					needError: false,
+				},
+				body: []byte(`{"url":1}`),
+			},
+			want: want{
+				statusCode:  http.StatusBadRequest,
+				body:        "",
+				contentType: "application/json",
+			},
+		},
+		{
+			name: "check add with empty body",
+			fields: fields{
+				requestURL: "/api/shorten",
+				storage: &mockStorage{
+					needError: false,
+				},
+			},
+			want: want{
+				statusCode:  http.StatusBadRequest,
+				body:        "",
+				contentType: "application/json",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &AppHandler{
+				repo: tt.fields.storage,
+			}
+			r := NewRouter(a)
+			ts := httptest.NewServer(r)
+			defer ts.Close()
+			a.baseURL = ts.URL
+			request, err := http.NewRequest(http.MethodPost, ts.URL+tt.fields.requestURL, bytes.NewBuffer(tt.fields.body))
+			require.NoError(t, err)
+			res, err := http.DefaultClient.Do(request)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want.statusCode, res.StatusCode)
+			assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"))
+			if len(tt.want.body) != 0 {
+				defer res.Body.Close()
+				body, err := io.ReadAll(res.Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				assert.Equal(t, tt.want.body, strings.TrimRight(string(body), "\n"))
 			}
 		})
 	}
