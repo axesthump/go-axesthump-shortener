@@ -8,6 +8,7 @@ import (
 	myMiddleware "go-axesthump-shortener/internal/app/middleware"
 	"go-axesthump-shortener/internal/app/repository"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -128,6 +129,8 @@ func (a *AppHandler) listURLs() http.HandlerFunc {
 
 		urls := a.repo.GetAllURLs(a.baseURL)
 
+		log.Printf("Urls len - %d\n", len(urls))
+
 		if len(urls) == 0 {
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -139,7 +142,10 @@ func (a *AppHandler) listURLs() http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		w.Write(resp)
+		_, err = w.Write(resp)
+		if err != nil {
+			return
+		}
 	}
 }
 

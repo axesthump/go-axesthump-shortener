@@ -3,21 +3,21 @@ package user
 import "sync"
 
 type IDGenerator struct {
-	nextId uint32
+	nextID uint32
 	mx     sync.RWMutex
 }
 
-func (g *IDGenerator) GetNewUserId() uint32 {
+func (g *IDGenerator) GetNewUserID() uint32 {
 	g.mx.Lock()
 	defer g.mx.Unlock()
-	res := g.nextId
-	g.nextId++
+	res := g.nextID
+	g.nextID++
 	return res
 }
 
 func (g *IDGenerator) IsCreatedUser(id uint32) bool {
 	g.mx.RLock()
 	defer g.mx.RUnlock()
-	res := id < g.nextId
+	res := id < g.nextID
 	return res
 }

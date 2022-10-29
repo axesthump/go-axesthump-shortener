@@ -39,12 +39,11 @@ func (a *authService) Auth(next http.Handler) http.Handler {
 			}
 		}
 		next.ServeHTTP(w, r)
-		return
 	})
 }
 
 func (a *authService) GenerateCookie(w http.ResponseWriter) {
-	newUserID := a.idGenerator.GetNewUserId()
+	newUserID := a.idGenerator.GetNewUserID()
 	log.Printf("Generate new user id - %d\n", newUserID)
 	newUserIDBytes := make([]byte, 4)
 	binary.BigEndian.PutUint32(newUserIDBytes, newUserID)
