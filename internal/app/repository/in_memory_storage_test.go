@@ -39,11 +39,11 @@ func TestStorage_CreateShortURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &InMemoryStorage{
-				mx:     tt.fields.mx,
-				urls:   tt.fields.urls,
-				lastID: tt.fields.lastID,
+				mx:       tt.fields.mx,
+				userURLs: tt.fields.urls,
+				lastID:   tt.fields.lastID,
 			}
-			got, _ := s.CreateShortURL(tt.args.beginURL, tt.args.url)
+			got, _ := s.CreateShortURL(tt.args.beginURL, tt.args.url, 0)
 			if got != tt.want {
 				t.Errorf("CreateShortURL() got = %v, want %v", got, tt.want)
 			}
@@ -97,11 +97,11 @@ func TestStorage_GetFullURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &InMemoryStorage{
-				mx:     tt.fields.mx,
-				urls:   tt.fields.urls,
-				lastID: tt.fields.lastID,
+				mx:       tt.fields.mx,
+				userURLs: tt.fields.urls,
+				lastID:   tt.fields.lastID,
 			}
-			got, err := s.GetFullURL(tt.args.shortURL)
+			got, err := s.GetFullURL(tt.args.shortURL, 0)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetFullURL() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -115,16 +115,16 @@ func TestStorage_GetFullURL(t *testing.T) {
 
 func TestStorage_CreateShortURLDoubleCheck(t *testing.T) {
 	s := &InMemoryStorage{
-		mx:     &sync.RWMutex{},
-		urls:   map[int64]string{},
-		lastID: 0,
+		mx:       &sync.RWMutex{},
+		userURLs: map[int64]string{},
+		lastID:   0,
 	}
 	beginURL := "http://begin:8080/"
 	fullURL := beginURL + "some/path"
 	fullURL2 := beginURL + "some/path/path"
-	got, _ := s.CreateShortURL(beginURL, fullURL)
+	got, _ := s.CreateShortURL(beginURL, fullURL, 0)
 	assert.Equal(t, beginURL+"0", got)
-	got, _ = s.CreateShortURL(beginURL, fullURL2)
+	got, _ = s.CreateShortURL(beginURL, fullURL2, 0)
 	assert.Equal(t, beginURL+"1", got)
 
 }

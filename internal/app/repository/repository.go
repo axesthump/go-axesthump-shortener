@@ -6,8 +6,8 @@ type URLInfo struct {
 }
 
 type Repository interface {
-	CreateShortURL(beginURL string, url string) (string, error)
-	GetFullURL(shortURL int64) (string, error)
-	GetAllURLs(beginURL string) []URLInfo
+	CreateShortURL(beginURL string, url string, userID uint32) (string, error)
+	GetFullURL(shortURL int64, userID uint32) (string, error)
+	GetAllURLs(beginURL string, userID uint32) []URLInfo
 	Close() error
 }

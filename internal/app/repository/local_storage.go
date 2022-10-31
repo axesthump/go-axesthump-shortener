@@ -35,10 +35,10 @@ func getLastID(file *os.File) int64 {
 	for scanner.Scan() {
 		data := string(scanner.Bytes())
 		urlData := strings.Split(data, "~")
-		if len(urlData) != 2 {
+		if len(urlData) != 3 {
 			panic(errors.New("bad data in file"))
 		}
-		lastID, err = strconv.ParseInt(urlData[0], 10, 64)
+		lastID, err = strconv.ParseInt(urlData[1], 10, 64)
 		if err != nil {
 			panic(errors.New("bad data in file"))
 		}
@@ -46,12 +46,12 @@ func getLastID(file *os.File) int64 {
 	return lastID + 1
 }
 
-func (ls *LocalStorage) CreateShortURL(beginURL string, url string) (string, error) {
+func (ls *LocalStorage) CreateShortURL(beginURL string, url string, userID uint32) (string, error) {
 	ls.mx.Lock()
 	defer ls.mx.Unlock()
 	shortEndpoint := strconv.FormatInt(ls.lastID, 10)
 	shortURL := beginURL + shortEndpoint
-	data := strconv.FormatInt(ls.lastID, 10) + "~" + url
+	data := strconv.FormatInt(int64(userID), 10) + "~" + strconv.FormatInt(ls.lastID, 10) + "~" + url
 
 	wr := bufio.NewWriter(ls.file)
 	_, err := wr.Write([]byte(data))
@@ -72,7 +72,7 @@ func (ls *LocalStorage) CreateShortURL(beginURL string, url string) (string, err
 	return shortURL, nil
 }
 
-func (ls *LocalStorage) GetFullURL(shortURL int64) (string, error) {
+func (ls *LocalStorage) GetFullURL(shortURL int64, userID uint32) (string, error) {
 	ls.mx.RLock()
 	defer ls.mx.RUnlock()
 	fileForRead, err := os.OpenFile(ls.file.Name(), os.O_RDONLY, 0777)
@@ -84,21 +84,28 @@ func (ls *LocalStorage) GetFullURL(shortURL int64) (string, error) {
 	for scanner.Scan() {
 		data := string(scanner.Bytes())
 		urlData := strings.Split(data, "~")
-		if len(urlData) != 2 {
+		if len(urlData) != 3 {
 			panic(errors.New("bad data in file"))
 		}
-		elementShortURL, err := strconv.ParseInt(urlData[0], 10, 64)
+		storageUserID, err := strconv.ParseInt(urlData[0], 10, 64)
+		if err != nil {
+			return "", err
+		}
+		if uint32(storageUserID) != userID {
+			continue
+		}
+		elementShortURL, err := strconv.ParseInt(urlData[1], 10, 64)
 		if err != nil {
 			return "", err
 		}
 		if elementShortURL == shortURL {
-			return urlData[1], nil
+			return urlData[2], nil
 		}
 	}
 	return "", errors.New("url nor found")
 }
 
-func (ls *LocalStorage) GetAllURLs(beginURL string) []URLInfo {
+func (ls *LocalStorage) GetAllURLs(beginURL string, userID uint32) []URLInfo {
 	ls.mx.RLock()
 	defer ls.mx.RUnlock()
 	fileForRead, err := os.OpenFile(ls.file.Name(), os.O_RDONLY, 0777)
@@ -111,10 +118,14 @@ func (ls *LocalStorage) GetAllURLs(beginURL string) []URLInfo {
 	for scanner.Scan() {
 		data := string(scanner.Bytes())
 		urlData := strings.Split(data, "~")
-		if len(urlData) != 2 {
+		if len(urlData) != 3 {
 			continue
 		}
-		shortURL, err := strconv.ParseInt(urlData[0], 10, 64)
+		storageUserID, err := strconv.ParseInt(urlData[0], 10, 64)
+		if err != nil || uint32(storageUserID) != userID {
+			continue
+		}
+		shortURL, err := strconv.ParseInt(urlData[1], 10, 64)
 		if err != nil {
 			continue
 		}

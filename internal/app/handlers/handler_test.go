@@ -22,11 +22,11 @@ type mockStorage struct {
 	needError bool
 }
 
-func (m *mockStorage) CreateShortURL(beginURL string, url string) (string, error) {
+func (m *mockStorage) CreateShortURL(beginURL string, url string, userID uint32) (string, error) {
 	return shortURL, nil
 }
 
-func (m *mockStorage) GetFullURL(shortURL int64) (string, error) {
+func (m *mockStorage) GetFullURL(shortURL int64, userID uint32) (string, error) {
 	if m.needError {
 		return "", errors.New("error")
 	} else {
@@ -34,7 +34,7 @@ func (m *mockStorage) GetFullURL(shortURL int64) (string, error) {
 	}
 }
 
-func (m *mockStorage) GetAllURLs(beginURL string) []repository.URLInfo {
+func (m *mockStorage) GetAllURLs(beginURL string, userID uint32) []repository.URLInfo {
 	return make([]repository.URLInfo, 0)
 }
 

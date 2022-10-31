@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -31,18 +32,21 @@ func NewAuthService() *authService {
 func (a *authService) Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("auth")
+		var userID uint32
+		var ok bool
 		if err != nil {
-			a.GenerateCookie(w)
+			userID = a.GenerateCookie(w)
 		} else {
-			if !a.validateCookie(cookie) {
-				a.GenerateCookie(w)
+			if ok, userID = a.validateCookie(cookie); !ok {
+				userID = a.GenerateCookie(w)
 			}
 		}
-		next.ServeHTTP(w, r)
+		ctx := context.WithValue(r.Context(), "id", userID)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-func (a *authService) GenerateCookie(w http.ResponseWriter) {
+func (a *authService) GenerateCookie(w http.ResponseWriter) uint32 {
 	newUserID := a.idGenerator.GetNewUserID()
 	log.Printf("Generate new user id - %d\n", newUserID)
 	newUserIDBytes := make([]byte, 4)
@@ -58,12 +62,13 @@ func (a *authService) GenerateCookie(w http.ResponseWriter) {
 		Value: token,
 	}
 	http.SetCookie(w, newCookie)
+	return newUserID
 }
 
-func (a *authService) validateCookie(cookie *http.Cookie) bool {
+func (a *authService) validateCookie(cookie *http.Cookie) (bool, uint32) {
 	data, err := hex.DecodeString(cookie.Value)
 	if err != nil {
-		return false
+		return false, 0
 	}
 	userID := binary.BigEndian.Uint32(data[:4])
 	h := hmac.New(sha256.New, a.secretKey)
@@ -71,10 +76,10 @@ func (a *authService) validateCookie(cookie *http.Cookie) bool {
 	h.Write(data[:4])
 	hash := h.Sum(nil)
 	if !hmac.Equal(hash, data[4:]) {
-		return false
+		return false, 0
 	}
 	if !a.idGenerator.IsCreatedUser(userID) {
-		return false
+		return false, 0
 	}
-	return true
+	return true, userID
 }
