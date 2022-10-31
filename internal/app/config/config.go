@@ -74,7 +74,7 @@ func setStorage(config *AppConfig) error {
 			lastUserID = localStorage.GetUserLastID()
 		}
 	}
-	config.UserIDGenerator = user.NewUserIdGenerator(lastUserID)
+	config.UserIDGenerator = user.NewUserIDGenerator(lastUserID)
 	return nil
 }
 

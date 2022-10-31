@@ -128,7 +128,7 @@ func TestAppHandler_getURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
 				repo:            tt.fields.storage,
-				userIDGenerator: user.NewUserIdGenerator(0),
+				userIDGenerator: user.NewUserIDGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)
@@ -216,7 +216,7 @@ func TestAppHandler_addURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
 				repo:            tt.fields.storage,
-				userIDGenerator: user.NewUserIdGenerator(0),
+				userIDGenerator: user.NewUserIDGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)
@@ -321,7 +321,7 @@ func TestAppHandler_addURLRest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
 				repo:            tt.fields.storage,
-				userIDGenerator: user.NewUserIdGenerator(0),
+				userIDGenerator: user.NewUserIDGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)

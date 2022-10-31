@@ -7,7 +7,7 @@ type IDGenerator struct {
 	mx     sync.RWMutex
 }
 
-func NewUserIdGenerator(lastID uint32) *IDGenerator {
+func NewUserIDGenerator(lastID uint32) *IDGenerator {
 	return &IDGenerator{
 		nextID: lastID,
 	}
