@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "github.com/jackc/pgx/v5"
 	"go-axesthump-shortener/internal/app/config"
 	"go-axesthump-shortener/internal/app/handlers"
 	"log"
@@ -16,6 +17,12 @@ func handleShutdown(signalHandler chan os.Signal, done chan bool, conf *config.A
 	if err != nil {
 		panic(err)
 	}
+	if conf.Conn != nil {
+		err = conf.Conn.Close(conf.DbContext)
+		if err != nil {
+			panic(err)
+		}
+	}
 	done <- true
 }
 
@@ -27,7 +34,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	appHandler := handlers.NewAppHandler(conf.BaseURL+"/", conf.Repo)
+	appHandler := handlers.NewAppHandler(conf.BaseURL+"/", conf.Repo, conf.Conn)
 	go handleShutdown(signalHandler, done, conf)
 	go func() {
 		log.Fatal(http.ListenAndServe(conf.ServerAddr, appHandler.Router))

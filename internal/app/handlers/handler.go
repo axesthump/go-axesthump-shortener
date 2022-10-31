@@ -2,20 +2,24 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5"
 	myMiddleware "go-axesthump-shortener/internal/app/middleware"
 	"go-axesthump-shortener/internal/app/repository"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type AppHandler struct {
 	repo    repository.Repository
 	baseURL string
+	dbConn  *pgx.Conn
 	Router  chi.Router
 }
 
@@ -34,6 +38,7 @@ func NewRouter(appHandler *AppHandler) chi.Router {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
+	r.Get("/ping", appHandler.ping())
 	r.Get("/{shortURL}", appHandler.getURL())
 	r.Post("/", appHandler.addURL())
 
@@ -45,10 +50,11 @@ func NewRouter(appHandler *AppHandler) chi.Router {
 	return r
 }
 
-func NewAppHandler(baseURL string, repo repository.Repository) *AppHandler {
+func NewAppHandler(baseURL string, repo repository.Repository, conn *pgx.Conn) *AppHandler {
 	h := &AppHandler{
 		repo:    repo,
 		baseURL: baseURL,
+		dbConn:  conn,
 	}
 	h.Router = NewRouter(h)
 	return h
@@ -147,6 +153,22 @@ func (a *AppHandler) listURLs() http.HandlerFunc {
 		if err != nil {
 			return
 		}
+	}
+}
+
+func (a *AppHandler) ping() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if a.dbConn == nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		if err := a.dbConn.Ping(ctx); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
 	}
 }
 

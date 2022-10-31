@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
@@ -24,11 +23,7 @@ type authService struct {
 func NewAuthService() *authService {
 	as := &authService{
 		idGenerator: user.IDGenerator{},
-		secretKey:   make([]byte, 0, 16),
-	}
-	_, err := rand.Read(as.secretKey)
-	if err != nil {
-		panic(err)
+		secretKey:   []byte("secret_key"),
 	}
 	return as
 }
