@@ -18,7 +18,7 @@ func handleShutdown(signalHandler chan os.Signal, done chan bool, conf *config.A
 		panic(err)
 	}
 	if conf.Conn != nil {
-		err = conf.Conn.Close(conf.DbContext)
+		err = conf.Conn.Close(conf.DBContext)
 		if err != nil {
 			panic(err)
 		}

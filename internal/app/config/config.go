@@ -15,7 +15,7 @@ type AppConfig struct {
 	Repo        repository.Repository
 	storagePath string
 	dbConnURL   string
-	DbContext   context.Context
+	DBContext   context.Context
 	Conn        *pgx.Conn
 }
 
@@ -35,8 +35,8 @@ func setDBConn(config *AppConfig) {
 		return
 	}
 
-	config.DbContext = context.Background()
-	conn, err := pgx.Connect(config.DbContext, config.dbConnURL)
+	config.DBContext = context.Background()
+	conn, err := pgx.Connect(config.DBContext, config.dbConnURL)
 	if err != nil {
 		config.Conn = nil
 		return
