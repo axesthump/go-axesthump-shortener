@@ -12,6 +12,10 @@ import (
 	"net/http"
 )
 
+type userID string
+
+const UserIDKey userID = "id"
+
 type authService struct {
 	idGenerator user.IDGenerator
 	secretKey   []byte
@@ -41,7 +45,7 @@ func (a *authService) Auth(next http.Handler) http.Handler {
 				userID = a.GenerateCookie(w)
 			}
 		}
-		ctx := context.WithValue(r.Context(), "id", userID)
+		ctx := context.WithValue(r.Context(), UserIDKey, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

@@ -70,7 +70,7 @@ func (a *AppHandler) addURLRest() http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		userID := r.Context().Value("id").(uint32)
+		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
 		shortURL, err := a.repo.CreateShortURL(a.baseURL, requestURL.URL, userID)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -98,7 +98,7 @@ func (a *AppHandler) addURL() http.HandlerFunc {
 			return
 		}
 		url := string(body)
-		userID := r.Context().Value("id").(uint32)
+		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
 		shortURL, _ := a.repo.CreateShortURL(a.baseURL, url, userID)
 
 		sendResponse(w, []byte(shortURL))
@@ -114,7 +114,7 @@ func (a *AppHandler) getURL() http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		userID := r.Context().Value("id").(uint32)
+		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
 		fullURL, err := a.repo.GetFullURL(shortURL, userID)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -128,7 +128,7 @@ func (a *AppHandler) getURL() http.HandlerFunc {
 func (a *AppHandler) listURLs() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		userID := r.Context().Value("id").(uint32)
+		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
 		urls := a.repo.GetAllURLs(a.baseURL, userID)
 
 		log.Printf("Urls len - %d\n", len(urls))

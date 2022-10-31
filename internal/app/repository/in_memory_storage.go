@@ -6,20 +6,20 @@ import (
 	"sync"
 )
 
-type urlInfo struct {
+type StorageURL struct {
 	urls map[int64]string
 }
 
 type InMemoryStorage struct {
 	mx       *sync.RWMutex
-	userURLs map[uint32]urlInfo
+	userURLs map[uint32]StorageURL
 	lastID   int64
 }
 
 func NewInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
 		mx:       &sync.RWMutex{},
-		userURLs: make(map[uint32]urlInfo),
+		userURLs: make(map[uint32]StorageURL),
 		lastID:   int64(0),
 	}
 }
@@ -28,7 +28,7 @@ func (s *InMemoryStorage) CreateShortURL(beginURL string, url string, userID uin
 	s.mx.Lock()
 	defer s.mx.Unlock()
 	if _, ok := s.userURLs[userID]; !ok {
-		s.userURLs[userID] = urlInfo{
+		s.userURLs[userID] = StorageURL{
 			make(map[int64]string),
 		}
 	}
