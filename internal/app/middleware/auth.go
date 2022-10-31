@@ -12,9 +12,9 @@ import (
 	"net/http"
 )
 
-type userID string
+type userKeyID string
 
-const UserIDKey userID = "id"
+const UserIDKey userKeyID = "id"
 
 type authService struct {
 	idGenerator user.IDGenerator

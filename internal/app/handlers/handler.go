@@ -153,6 +153,7 @@ func (a *AppHandler) listURLs() http.HandlerFunc {
 
 func sendResponse(w http.ResponseWriter, res []byte) {
 	w.WriteHeader(http.StatusCreated)
+	log.Printf("Response: %s\n", res)
 	_, err := w.Write(res)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
