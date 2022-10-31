@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -43,7 +44,7 @@ func TestStorage_CreateShortURL(t *testing.T) {
 				userURLs: tt.fields.urls,
 				lastID:   tt.fields.lastID,
 			}
-			got, _ := s.CreateShortURL(tt.args.beginURL, tt.args.url, 0)
+			got, _ := s.CreateShortURL(context.Background(), tt.args.beginURL, tt.args.url, 0)
 			if got != tt.want {
 				t.Errorf("CreateShortURL() got = %v, want %v", got, tt.want)
 			}
@@ -105,7 +106,7 @@ func TestStorage_GetFullURL(t *testing.T) {
 				userURLs: tt.fields.urls,
 				lastID:   tt.fields.lastID,
 			}
-			got, err := s.GetFullURL(tt.args.shortURL)
+			got, err := s.GetFullURL(context.Background(), tt.args.shortURL)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetFullURL() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -128,9 +129,9 @@ func TestStorage_CreateShortURLDoubleCheck(t *testing.T) {
 	beginURL := "http://begin:8080/"
 	fullURL := beginURL + "some/path"
 	fullURL2 := beginURL + "some/path/path"
-	got, _ := s.CreateShortURL(beginURL, fullURL, 0)
+	got, _ := s.CreateShortURL(context.Background(), beginURL, fullURL, 0)
 	assert.Equal(t, beginURL+"0", got)
-	got, _ = s.CreateShortURL(beginURL, fullURL2, 0)
+	got, _ = s.CreateShortURL(context.Background(), beginURL, fullURL2, 0)
 	assert.Equal(t, beginURL+"1", got)
 
 }

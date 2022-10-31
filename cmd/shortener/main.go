@@ -34,7 +34,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	appHandler := handlers.NewAppHandler(conf.BaseURL+"/", conf.Repo, conf.Conn)
+	appHandler := handlers.NewAppHandler(conf)
 	go handleShutdown(signalHandler, done, conf)
 	go func() {
 		log.Fatal(http.ListenAndServe(conf.ServerAddr, appHandler.Router))

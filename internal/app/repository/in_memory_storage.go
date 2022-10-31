@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"sync"
@@ -24,7 +25,12 @@ func NewInMemoryStorage() *InMemoryStorage {
 	}
 }
 
-func (s *InMemoryStorage) CreateShortURL(beginURL string, url string, userID uint32) (string, error) {
+func (s *InMemoryStorage) CreateShortURL(
+	ctx context.Context,
+	beginURL string,
+	originalURL string,
+	userID uint32,
+) (string, error) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
 	if _, ok := s.userURLs[userID]; !ok {
@@ -32,14 +38,14 @@ func (s *InMemoryStorage) CreateShortURL(beginURL string, url string, userID uin
 			make(map[int64]string),
 		}
 	}
-	s.userURLs[userID].urls[s.lastID] = url
+	s.userURLs[userID].urls[s.lastID] = originalURL
 	shortEndpoint := strconv.FormatInt(s.lastID, 10)
 	shortURL := beginURL + shortEndpoint
 	s.lastID++
 	return shortURL, nil
 }
 
-func (s *InMemoryStorage) GetFullURL(shortURL int64) (string, error) {
+func (s *InMemoryStorage) GetFullURL(ctx context.Context, shortURL int64) (string, error) {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
 	for _, storageURL := range s.userURLs {
@@ -50,7 +56,7 @@ func (s *InMemoryStorage) GetFullURL(shortURL int64) (string, error) {
 	return "", fmt.Errorf("url dont exist")
 }
 
-func (s *InMemoryStorage) GetAllURLs(beginURL string, userID uint32) []URLInfo {
+func (s *InMemoryStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []URLInfo {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
 

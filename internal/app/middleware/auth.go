@@ -16,13 +16,13 @@ type userKeyID string
 const UserIDKey userKeyID = "id"
 
 type authService struct {
-	idGenerator user.IDGenerator
+	idGenerator *user.IDGenerator
 	secretKey   []byte
 }
 
-func NewAuthService() *authService {
+func NewAuthService(generator *user.IDGenerator) *authService {
 	as := &authService{
-		idGenerator: user.IDGenerator{},
+		idGenerator: generator,
 		secretKey:   []byte("secret_key"),
 	}
 	return as

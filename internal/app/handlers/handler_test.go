@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go-axesthump-shortener/internal/app/repository"
+	"go-axesthump-shortener/internal/app/user"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -22,11 +24,11 @@ type mockStorage struct {
 	needError bool
 }
 
-func (m *mockStorage) CreateShortURL(beginURL string, url string, userID uint32) (string, error) {
+func (m *mockStorage) CreateShortURL(ctx context.Context, beginURL string, originalURL string, userID uint32) (string, error) {
 	return shortURL, nil
 }
 
-func (m *mockStorage) GetFullURL(shortURL int64) (string, error) {
+func (m *mockStorage) GetFullURL(ctx context.Context, shortURL int64) (string, error) {
 	if m.needError {
 		return "", errors.New("error")
 	} else {
@@ -34,7 +36,7 @@ func (m *mockStorage) GetFullURL(shortURL int64) (string, error) {
 	}
 }
 
-func (m *mockStorage) GetAllURLs(beginURL string, userID uint32) []repository.URLInfo {
+func (m *mockStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []repository.URLInfo {
 	return make([]repository.URLInfo, 0)
 }
 
@@ -125,7 +127,8 @@ func TestAppHandler_getURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
-				repo: tt.fields.storage,
+				repo:            tt.fields.storage,
+				userIDGenerator: user.NewUserIdGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)
@@ -212,7 +215,8 @@ func TestAppHandler_addURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
-				repo: tt.fields.storage,
+				repo:            tt.fields.storage,
+				userIDGenerator: user.NewUserIdGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)
@@ -316,7 +320,8 @@ func TestAppHandler_addURLRest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
-				repo: tt.fields.storage,
+				repo:            tt.fields.storage,
+				userIDGenerator: user.NewUserIdGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)

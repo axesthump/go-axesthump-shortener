@@ -2,6 +2,7 @@ package repository
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"os"
 	"strconv"
@@ -46,12 +47,35 @@ func getLastID(file *os.File) int64 {
 	return lastID + 1
 }
 
-func (ls *LocalStorage) CreateShortURL(beginURL string, url string, userID uint32) (string, error) {
+func (ls *LocalStorage) GetUserLastID() uint32 {
+	var lastID int64
+	var err error
+	scanner := bufio.NewScanner(ls.file)
+	for scanner.Scan() {
+		data := string(scanner.Bytes())
+		urlData := strings.Split(data, "~")
+		if len(urlData) != 3 {
+			panic(errors.New("bad data in file"))
+		}
+		lastID, err = strconv.ParseInt(urlData[0], 10, 64)
+		if err != nil {
+			panic(errors.New("bad data in file"))
+		}
+	}
+	return uint32(lastID + 1)
+}
+
+func (ls *LocalStorage) CreateShortURL(
+	ctx context.Context,
+	beginURL string,
+	originalURL string,
+	userID uint32,
+) (string, error) {
 	ls.mx.Lock()
 	defer ls.mx.Unlock()
 	shortEndpoint := strconv.FormatInt(ls.lastID, 10)
 	shortURL := beginURL + shortEndpoint
-	data := strconv.FormatInt(int64(userID), 10) + "~" + strconv.FormatInt(ls.lastID, 10) + "~" + url
+	data := strconv.FormatInt(int64(userID), 10) + "~" + strconv.FormatInt(ls.lastID, 10) + "~" + originalURL
 
 	wr := bufio.NewWriter(ls.file)
 	_, err := wr.Write([]byte(data))
@@ -72,7 +96,7 @@ func (ls *LocalStorage) CreateShortURL(beginURL string, url string, userID uint3
 	return shortURL, nil
 }
 
-func (ls *LocalStorage) GetFullURL(shortURL int64) (string, error) {
+func (ls *LocalStorage) GetFullURL(ctx context.Context, shortURL int64) (string, error) {
 	ls.mx.RLock()
 	defer ls.mx.RUnlock()
 	fileForRead, err := os.OpenFile(ls.file.Name(), os.O_RDONLY, 0777)
@@ -98,7 +122,7 @@ func (ls *LocalStorage) GetFullURL(shortURL int64) (string, error) {
 	return "", errors.New("url nor found")
 }
 
-func (ls *LocalStorage) GetAllURLs(beginURL string, userID uint32) []URLInfo {
+func (ls *LocalStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []URLInfo {
 	ls.mx.RLock()
 	defer ls.mx.RUnlock()
 	fileForRead, err := os.OpenFile(ls.file.Name(), os.O_RDONLY, 0777)

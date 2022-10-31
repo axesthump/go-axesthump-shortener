@@ -7,8 +7,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5"
+	"go-axesthump-shortener/internal/app/config"
 	myMiddleware "go-axesthump-shortener/internal/app/middleware"
 	"go-axesthump-shortener/internal/app/repository"
+	"go-axesthump-shortener/internal/app/user"
 	"io"
 	"log"
 	"net/http"
@@ -17,10 +19,11 @@ import (
 )
 
 type AppHandler struct {
-	repo    repository.Repository
-	baseURL string
-	dbConn  *pgx.Conn
-	Router  chi.Router
+	repo            repository.Repository
+	userIDGenerator *user.IDGenerator
+	baseURL         string
+	dbConn          *pgx.Conn
+	Router          chi.Router
 }
 
 type requestURL struct {
@@ -33,7 +36,7 @@ type response struct {
 
 func NewRouter(appHandler *AppHandler) chi.Router {
 	r := chi.NewRouter()
-	r.Use(myMiddleware.NewAuthService().Auth)
+	r.Use(myMiddleware.NewAuthService(appHandler.userIDGenerator).Auth)
 	r.Use(myMiddleware.Gzip)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
@@ -50,11 +53,12 @@ func NewRouter(appHandler *AppHandler) chi.Router {
 	return r
 }
 
-func NewAppHandler(baseURL string, repo repository.Repository, conn *pgx.Conn) *AppHandler {
+func NewAppHandler(config *config.AppConfig) *AppHandler {
 	h := &AppHandler{
-		repo:    repo,
-		baseURL: baseURL,
-		dbConn:  conn,
+		repo:            config.Repo,
+		baseURL:         config.BaseURL + "/",
+		dbConn:          config.Conn,
+		userIDGenerator: config.UserIDGenerator,
 	}
 	h.Router = NewRouter(h)
 	return h
@@ -77,7 +81,7 @@ func (a *AppHandler) addURLRest() http.HandlerFunc {
 			return
 		}
 		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
-		shortURL, err := a.repo.CreateShortURL(a.baseURL, requestURL.URL, userID)
+		shortURL, err := a.repo.CreateShortURL(r.Context(), a.baseURL, requestURL.URL, userID)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -105,7 +109,7 @@ func (a *AppHandler) addURL() http.HandlerFunc {
 		}
 		url := string(body)
 		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
-		shortURL, _ := a.repo.CreateShortURL(a.baseURL, url, userID)
+		shortURL, _ := a.repo.CreateShortURL(r.Context(), a.baseURL, url, userID)
 
 		sendResponse(w, []byte(shortURL))
 	}
@@ -120,7 +124,7 @@ func (a *AppHandler) getURL() http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		fullURL, err := a.repo.GetFullURL(shortURL)
+		fullURL, err := a.repo.GetFullURL(r.Context(), shortURL)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -134,7 +138,7 @@ func (a *AppHandler) listURLs() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
-		urls := a.repo.GetAllURLs(a.baseURL, userID)
+		urls := a.repo.GetAllURLs(r.Context(), a.baseURL, userID)
 
 		log.Printf("Urls len - %d\n", len(urls))
 

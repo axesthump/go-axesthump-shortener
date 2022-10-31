@@ -7,6 +7,12 @@ type IDGenerator struct {
 	mx     sync.RWMutex
 }
 
+func NewUserIdGenerator(lastID uint32) *IDGenerator {
+	return &IDGenerator{
+		nextID: lastID,
+	}
+}
+
 func (g *IDGenerator) GetNewUserID() uint32 {
 	g.mx.Lock()
 	defer g.mx.Unlock()
