@@ -114,8 +114,7 @@ func (a *AppHandler) getURL() http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
-		fullURL, err := a.repo.GetFullURL(shortURL, userID)
+		fullURL, err := a.repo.GetFullURL(shortURL)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return

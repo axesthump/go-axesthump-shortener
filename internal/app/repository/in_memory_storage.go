@@ -39,14 +39,15 @@ func (s *InMemoryStorage) CreateShortURL(beginURL string, url string, userID uin
 	return shortURL, nil
 }
 
-func (s *InMemoryStorage) GetFullURL(shortURL int64, userID uint32) (string, error) {
+func (s *InMemoryStorage) GetFullURL(shortURL int64) (string, error) {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
-	if longURL, ok := s.userURLs[userID].urls[shortURL]; ok {
-		return longURL, nil
-	} else {
-		return "", fmt.Errorf("url dont exist")
+	for _, storageURL := range s.userURLs {
+		if longURL, ok := storageURL.urls[shortURL]; ok {
+			return longURL, nil
+		}
 	}
+	return "", fmt.Errorf("url dont exist")
 }
 
 func (s *InMemoryStorage) GetAllURLs(beginURL string, userID uint32) []URLInfo {

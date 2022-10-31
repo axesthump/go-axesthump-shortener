@@ -105,7 +105,7 @@ func TestStorage_GetFullURL(t *testing.T) {
 				userURLs: tt.fields.urls,
 				lastID:   tt.fields.lastID,
 			}
-			got, err := s.GetFullURL(tt.args.shortURL, 0)
+			got, err := s.GetFullURL(tt.args.shortURL)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetFullURL() error = %v, wantErr %v", err, tt.wantErr)
 				return

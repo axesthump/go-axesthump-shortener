@@ -26,7 +26,7 @@ func (m *mockStorage) CreateShortURL(beginURL string, url string, userID uint32)
 	return shortURL, nil
 }
 
-func (m *mockStorage) GetFullURL(shortURL int64, userID uint32) (string, error) {
+func (m *mockStorage) GetFullURL(shortURL int64) (string, error) {
 	if m.needError {
 		return "", errors.New("error")
 	} else {

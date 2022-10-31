@@ -72,7 +72,7 @@ func (ls *LocalStorage) CreateShortURL(beginURL string, url string, userID uint3
 	return shortURL, nil
 }
 
-func (ls *LocalStorage) GetFullURL(shortURL int64, userID uint32) (string, error) {
+func (ls *LocalStorage) GetFullURL(shortURL int64) (string, error) {
 	ls.mx.RLock()
 	defer ls.mx.RUnlock()
 	fileForRead, err := os.OpenFile(ls.file.Name(), os.O_RDONLY, 0777)
@@ -86,13 +86,6 @@ func (ls *LocalStorage) GetFullURL(shortURL int64, userID uint32) (string, error
 		urlData := strings.Split(data, "~")
 		if len(urlData) != 3 {
 			panic(errors.New("bad data in file"))
-		}
-		storageUserID, err := strconv.ParseInt(urlData[0], 10, 64)
-		if err != nil {
-			return "", err
-		}
-		if uint32(storageUserID) != userID {
-			continue
 		}
 		elementShortURL, err := strconv.ParseInt(urlData[1], 10, 64)
 		if err != nil {
