@@ -39,11 +39,14 @@ func (a *authService) Auth(next http.Handler) http.Handler {
 		var userID uint32
 		var ok bool
 		if err != nil {
+			log.Printf("Generate new Cookie for %s\n", r.RemoteAddr)
 			userID = a.GenerateCookie(w)
 		} else {
 			if ok, userID = a.validateCookie(cookie); !ok {
+				log.Printf("Cookie not valid for %s\n", r.RemoteAddr)
 				userID = a.GenerateCookie(w)
 			}
+			log.Printf("Cookie valid for %s\n", r.RemoteAddr)
 		}
 		ctx := context.WithValue(r.Context(), UserIDKey, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
