@@ -68,30 +68,30 @@ func (a *AppHandler) addURLRest() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
 
-		body, err := readBody(w, r.Body)
-		if err != nil {
+		var body []byte
+		var err error
+		if body, err = readBody(w, r.Body); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		var requestURL requestURL
+		if err = json.Unmarshal(body, &requestURL); err != nil || len(requestURL.URL) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
-		err = json.Unmarshal(body, &requestURL)
-		if err != nil || len(requestURL.URL) == 0 {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
 		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
-		shortURL, err := a.repo.CreateShortURL(r.Context(), a.baseURL, requestURL.URL, userID)
-		if err != nil {
+		var shortURL string
+		if shortURL, err = a.repo.CreateShortURL(r.Context(), a.baseURL, requestURL.URL, userID); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		resp := response{Result: shortURL}
 		buf := bytes.NewBuffer([]byte{})
 		encoder := json.NewEncoder(buf)
 		encoder.SetEscapeHTML(false)
-		err = encoder.Encode(resp)
-		if err != nil {
+		resp := response{Result: shortURL}
+		if err = encoder.Encode(resp); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

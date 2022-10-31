@@ -78,20 +78,12 @@ func (ls *LocalStorage) CreateShortURL(
 	data := strconv.FormatInt(int64(userID), 10) + "~" + strconv.FormatInt(ls.lastID, 10) + "~" + originalURL
 
 	wr := bufio.NewWriter(ls.file)
-	_, err := wr.Write([]byte(data))
-	if err != nil {
+	if _, err := wr.WriteString(data + "\n"); err != nil {
 		return "", err
 	}
-
-	err = wr.WriteByte('\n')
-	if err != nil {
+	if err := wr.Flush(); err != nil {
 		return "", err
 	}
-	err = wr.Flush()
-	if err != nil {
-		return "", err
-	}
-
 	ls.lastID++
 	return shortURL, nil
 }
@@ -106,7 +98,7 @@ func (ls *LocalStorage) GetFullURL(ctx context.Context, shortURL int64) (string,
 	defer fileForRead.Close()
 	scanner := bufio.NewScanner(fileForRead)
 	for scanner.Scan() {
-		data := string(scanner.Bytes())
+		data := scanner.Text()
 		urlData := strings.Split(data, "~")
 		if len(urlData) != 3 {
 			panic(errors.New("bad data in file"))
@@ -133,7 +125,7 @@ func (ls *LocalStorage) GetAllURLs(ctx context.Context, beginURL string, userID 
 	defer fileForRead.Close()
 	scanner := bufio.NewScanner(fileForRead)
 	for scanner.Scan() {
-		data := string(scanner.Bytes())
+		data := scanner.Text()
 		urlData := strings.Split(data, "~")
 		if len(urlData) != 3 {
 			continue

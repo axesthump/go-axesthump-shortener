@@ -14,11 +14,12 @@ type AppConfig struct {
 	ServerAddr      string
 	BaseURL         string
 	Repo            repository.Repository
-	storagePath     string
-	dbConnURL       string
 	DBContext       context.Context
 	Conn            *pgx.Conn
 	UserIDGenerator *user.IDGenerator
+
+	storagePath string
+	dbConnURL   string
 }
 
 func CreateAppConfig() (*AppConfig, error) {
