@@ -46,6 +46,16 @@ func (m *mockStorage) Close() error {
 	return nil
 }
 
+func (m *mockStorage) CreateShortURLs(
+	ctx context.Context,
+	beginURL string,
+	urls []repository.URLWithID,
+	userID uint32,
+) ([]repository.URLWithID, error) {
+	res := make([]repository.URLWithID, 0, len(urls))
+	return res, nil
+}
+
 func TestAppHandler_getURL(t *testing.T) {
 	type fields struct {
 		storage    repository.Repository

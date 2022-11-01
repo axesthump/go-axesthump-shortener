@@ -71,6 +71,25 @@ func (s *InMemoryStorage) GetAllURLs(ctx context.Context, beginURL string, userI
 	}
 	return urls
 }
+func (s *InMemoryStorage) CreateShortURLs(
+	ctx context.Context,
+	beginURL string,
+	urls []URLWithID,
+	userID uint32,
+) ([]URLWithID, error) {
+	res := make([]URLWithID, 0, len(urls))
+	for _, url := range urls {
+		shortURL, err := s.CreateShortURL(ctx, beginURL, url.URL, userID)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, URLWithID{
+			CorrelationID: url.CorrelationID,
+			URL:           shortURL,
+		})
+	}
+	return res, nil
+}
 
 func (s *InMemoryStorage) Close() error {
 	return nil

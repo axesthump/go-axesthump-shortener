@@ -64,6 +64,21 @@ func (mr *MockRepositoryMockRecorder) CreateShortURL(arg0, arg1, arg2, arg3 inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateShortURL", reflect.TypeOf((*MockRepository)(nil).CreateShortURL), arg0, arg1, arg2, arg3)
 }
 
+// CreateShortURLs mocks base method.
+func (m *MockRepository) CreateShortURLs(arg0 context.Context, arg1 string, arg2 []repository.URLWithID, arg3 uint32) ([]repository.URLWithID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateShortURLs", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].([]repository.URLWithID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateShortURLs indicates an expected call of CreateShortURLs.
+func (mr *MockRepositoryMockRecorder) CreateShortURLs(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateShortURLs", reflect.TypeOf((*MockRepository)(nil).CreateShortURLs), arg0, arg1, arg2, arg3)
+}
+
 // GetAllURLs mocks base method.
 func (m *MockRepository) GetAllURLs(arg0 context.Context, arg1 string, arg2 uint32) []repository.URLInfo {
 	m.ctrl.T.Helper()

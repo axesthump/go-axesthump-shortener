@@ -102,6 +102,43 @@ func (db *dbStorage) GetAllURLs(ctx context.Context, beginURL string, userID uin
 	return urls
 }
 
+func (db *dbStorage) CreateShortURLs(
+	ctx context.Context,
+	beginURL string,
+	urls []URLWithID,
+	userID uint32,
+) ([]URLWithID, error) {
+	tx, err := db.conn.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Prepare(
+		ctx, "insert", "INSERT INTO shortener (short_url, long_url, user_id) VALUES ($1, $2, $3);",
+	)
+
+	res := make([]URLWithID, 0, len(urls))
+	db.Lock()
+	for _, url := range urls {
+		shortEndpoint := strconv.FormatInt(db.lastID, 10)
+		shortURL := beginURL + shortEndpoint
+		db.lastID++
+		_, err := tx.Exec(ctx, "insert", shortEndpoint, url.URL, userID)
+		if err != nil {
+			tx.Rollback(ctx)
+			return nil, err
+		}
+		res = append(res, URLWithID{
+			CorrelationID: url.CorrelationID,
+			URL:           shortURL,
+		})
+	}
+	tx.Commit(ctx)
+	db.Unlock()
+	return res, nil
+}
+
 func (db *dbStorage) Close() error {
 	return db.conn.Close(db.ctx)
 }

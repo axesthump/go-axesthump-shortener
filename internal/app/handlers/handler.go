@@ -34,6 +34,16 @@ type response struct {
 	Result string `json:"result"`
 }
 
+type addListURLsRequest struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+type addListURLsResponse struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
 func NewRouter(appHandler *AppHandler) chi.Router {
 	r := chi.NewRouter()
 	r.Use(myMiddleware.NewAuthService(appHandler.userIDGenerator).Auth)
@@ -46,7 +56,10 @@ func NewRouter(appHandler *AppHandler) chi.Router {
 	r.Post("/", appHandler.addURL())
 
 	r.Route("/api", func(r chi.Router) {
-		r.Post("/shorten", appHandler.addURLRest())
+		r.Route("/shorten", func(r chi.Router) {
+			r.Post("/", appHandler.addURLRest())
+			r.Post("/batch", appHandler.addListURLRest())
+		})
 		r.Get("/user/urls", appHandler.listURLs())
 	})
 
@@ -173,6 +186,57 @@ func (a *AppHandler) ping() http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func (a *AppHandler) addListURLRest() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := readBody(w, r.Body)
+		if err != nil {
+			return
+		}
+		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
+		var urlsForShort []addListURLsRequest
+		if err := json.Unmarshal(body, &urlsForShort); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		convertedURLs := make([]repository.URLWithID, 0, len(urlsForShort))
+		for _, url := range urlsForShort {
+			convertedURLs = append(convertedURLs, repository.URLWithID{
+				CorrelationID: url.CorrelationID,
+				URL:           url.OriginalURL,
+			})
+		}
+
+		shortenURLs, err := a.repo.CreateShortURLs(r.Context(), a.baseURL, convertedURLs, userID)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		shortenURLsResponse := make([]addListURLsResponse, 0, len(shortenURLs))
+		for _, shortenURL := range shortenURLs {
+			shortenURLsResponse = append(shortenURLsResponse, addListURLsResponse{
+				CorrelationID: shortenURL.CorrelationID,
+				ShortURL:      shortenURL.URL,
+			})
+		}
+
+		resBody, err := json.Marshal(&shortenURLsResponse)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, err = w.Write(resBody)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	}
 }
 
