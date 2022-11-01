@@ -112,7 +112,6 @@ func (db *dbStorage) CreateShortURLs(
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
 
 	if _, err = tx.Prepare(
 		ctx, "insert", "INSERT INTO shortener (short_url, long_url, user_id) VALUES ($1, $2, $3);",
@@ -129,6 +128,9 @@ func (db *dbStorage) CreateShortURLs(
 		db.lastID++
 		_, err := tx.Exec(ctx, "insert", shortEndpoint, url.URL, userID)
 		if err != nil {
+			if err = tx.Rollback(ctx); err != nil {
+				log.Fatalf("update drivers: unable to rollback: %v", err)
+			}
 			return nil, err
 		}
 		res = append(res, URLWithID{
