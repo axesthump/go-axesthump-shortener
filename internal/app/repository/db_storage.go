@@ -112,11 +112,18 @@ func (db *dbStorage) CreateShortURLs(
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
+	defer func(tx pgx.Tx, ctx context.Context) {
+		err := tx.Rollback(ctx)
+		if err != nil {
+			log.Fatalf("update drivers: unable to rollback: %v", err)
+		}
+	}(tx, ctx)
 
-	_, err = tx.Prepare(
+	if _, err = tx.Prepare(
 		ctx, "insert", "INSERT INTO shortener (short_url, long_url, user_id) VALUES ($1, $2, $3);",
-	)
+	); err != nil {
+		return nil, err
+	}
 
 	res := make([]URLWithID, 0, len(urls))
 	db.Lock()
@@ -126,7 +133,6 @@ func (db *dbStorage) CreateShortURLs(
 		db.lastID++
 		_, err := tx.Exec(ctx, "insert", shortEndpoint, url.URL, userID)
 		if err != nil {
-			tx.Rollback(ctx)
 			return nil, err
 		}
 		res = append(res, URLWithID{
@@ -134,7 +140,9 @@ func (db *dbStorage) CreateShortURLs(
 			URL:           shortURL,
 		})
 	}
-	tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
 	db.Unlock()
 	return res, nil
 }
