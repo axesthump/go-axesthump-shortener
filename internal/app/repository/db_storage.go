@@ -8,6 +8,13 @@ import (
 	"sync"
 )
 
+type LongURLConflictError struct {
+}
+
+func (e *LongURLConflictError) Error() string {
+	return "LongURL conflict"
+}
+
 type dbStorage struct {
 	conn *pgx.Conn
 	sync.RWMutex
@@ -56,16 +63,39 @@ func (db *dbStorage) CreateShortURL(
 	userID uint32,
 ) (string, error) {
 	db.Lock()
+	defer db.Unlock()
 	shortEndpoint := strconv.FormatInt(db.lastID, 10)
 	shortURL := beginURL + shortEndpoint
 	db.lastID++
-	db.Unlock()
-	query := "INSERT INTO shortener (short_url, long_url, user_id) VALUES ($1, $2, $3);"
-	_, err := db.conn.Exec(ctx, query, shortEndpoint, originalURL, userID)
+	query := "INSERT INTO shortener (short_url, long_url, user_id) VALUES ($1, $2, $3) ON CONFLICT (long_url) DO NOTHING;"
+	tag, err := db.conn.Exec(ctx, query, shortEndpoint, originalURL, userID)
 	if err != nil {
 		return "", err
 	}
-	return shortURL, nil
+	if tag.RowsAffected() == 0 {
+		db.lastID--
+		var short int64
+		short, err = db.GetFullURLByFullURL(ctx, originalURL)
+		if err != nil {
+			return "", err
+		}
+		shortEndpoint := strconv.FormatInt(short, 10)
+		shortURL = beginURL + shortEndpoint
+		err = &LongURLConflictError{}
+	}
+
+	return shortURL, err
+}
+
+func (db *dbStorage) GetFullURLByFullURL(ctx context.Context, fullURL string) (int64, error) {
+	query := "SELECT short_url FROM shortener WHERE long_url = $1"
+	row := db.conn.QueryRow(ctx, query, fullURL)
+	var shortURL = new(int64)
+	err := row.Scan(shortURL)
+	if err != nil {
+		return 0, err
+	}
+	return *shortURL, nil
 }
 
 func (db *dbStorage) GetFullURL(ctx context.Context, shortURL int64) (string, error) {

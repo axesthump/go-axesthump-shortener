@@ -49,7 +49,7 @@ func setDBConn(config *AppConfig) {
 }
 
 func createTable(config *AppConfig) {
-	query := "CREATE TABLE IF NOT EXISTS shortener (shortener_id SERIAL PRIMARY KEY,short_url int NOT NULL, long_url varchar(255) NOT NULL, user_id int NOT NULL);"
+	query := "CREATE TABLE IF NOT EXISTS shortener (shortener_id SERIAL PRIMARY KEY,short_url int NOT NULL, long_url varchar(255) NOT NULL UNIQUE, user_id int NOT NULL);"
 	_, err := config.Conn.Exec(config.DBContext, query)
 	if err != nil {
 		panic(err)

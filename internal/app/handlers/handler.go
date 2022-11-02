@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5"
@@ -95,21 +96,34 @@ func (a *AppHandler) addURLRest() http.HandlerFunc {
 		}
 
 		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
+		status := http.StatusCreated
 		var shortURL string
 		if shortURL, err = a.repo.CreateShortURL(r.Context(), a.baseURL, requestURL.URL, userID); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			if errors.Is(err, &repository.LongURLConflictError{}) {
+				status = http.StatusConflict
+			} else {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		}
+		buf, err := a.createAddURLResponse(w, shortURL)
+		if err != nil {
 			return
 		}
-		buf := bytes.NewBuffer([]byte{})
-		encoder := json.NewEncoder(buf)
-		encoder.SetEscapeHTML(false)
-		resp := response{Result: shortURL}
-		if err = encoder.Encode(resp); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		sendResponse(w, buf.Bytes())
+		sendResponse(w, buf, status)
 	}
+}
+
+func (a *AppHandler) createAddURLResponse(w http.ResponseWriter, shortURL string) ([]byte, error) {
+	buf := bytes.NewBuffer([]byte{})
+	encoder := json.NewEncoder(buf)
+	encoder.SetEscapeHTML(false)
+	resp := response{Result: shortURL}
+	if err := encoder.Encode(resp); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func (a *AppHandler) addURL() http.HandlerFunc {
@@ -122,9 +136,17 @@ func (a *AppHandler) addURL() http.HandlerFunc {
 		}
 		url := string(body)
 		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
-		shortURL, _ := a.repo.CreateShortURL(r.Context(), a.baseURL, url, userID)
-
-		sendResponse(w, []byte(shortURL))
+		shortURL, err := a.repo.CreateShortURL(r.Context(), a.baseURL, url, userID)
+		status := http.StatusCreated
+		if err != nil {
+			if errors.Is(err, &repository.LongURLConflictError{}) {
+				status = http.StatusConflict
+			} else {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		}
+		sendResponse(w, []byte(shortURL), status)
 	}
 }
 
@@ -240,8 +262,8 @@ func (a *AppHandler) addListURLRest() http.HandlerFunc {
 	}
 }
 
-func sendResponse(w http.ResponseWriter, res []byte) {
-	w.WriteHeader(http.StatusCreated)
+func sendResponse(w http.ResponseWriter, res []byte, status int) {
+	w.WriteHeader(status)
 	log.Printf("Response: %s\n", res)
 	_, err := w.Write(res)
 	if err != nil {
