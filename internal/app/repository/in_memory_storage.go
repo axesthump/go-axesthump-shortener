@@ -8,19 +8,19 @@ import (
 )
 
 type StorageURL struct {
-	urls map[int64]string
+	url    string
+	userID uint32
 }
 
 type InMemoryStorage struct {
-	mx       *sync.RWMutex
-	userURLs map[uint32]StorageURL
+	sync.RWMutex
+	userURLs map[int64]StorageURL
 	lastID   int64
 }
 
 func NewInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
-		mx:       &sync.RWMutex{},
-		userURLs: make(map[uint32]StorageURL),
+		userURLs: make(map[int64]StorageURL),
 		lastID:   int64(0),
 	}
 }
@@ -31,41 +31,40 @@ func (s *InMemoryStorage) CreateShortURL(
 	originalURL string,
 	userID uint32,
 ) (string, error) {
-	s.mx.Lock()
-	defer s.mx.Unlock()
-	if _, ok := s.userURLs[userID]; !ok {
-		s.userURLs[userID] = StorageURL{
-			make(map[int64]string),
-		}
-	}
-	s.userURLs[userID].urls[s.lastID] = originalURL
+	s.Lock()
+	defer s.Unlock()
 	shortEndpoint := strconv.FormatInt(s.lastID, 10)
 	shortURL := beginURL + shortEndpoint
+	s.userURLs[s.lastID] = StorageURL{
+		url:    originalURL,
+		userID: userID,
+	}
 	s.lastID++
 	return shortURL, nil
 }
 
 func (s *InMemoryStorage) GetFullURL(ctx context.Context, shortURL int64) (string, error) {
-	s.mx.RLock()
-	defer s.mx.RUnlock()
-	for _, storageURL := range s.userURLs {
-		if longURL, ok := storageURL.urls[shortURL]; ok {
-			return longURL, nil
-		}
+	s.RLock()
+	defer s.RUnlock()
+	if url, ok := s.userURLs[shortURL]; ok {
+		return url.url, nil
 	}
 	return "", fmt.Errorf("url dont exist")
 }
 
 func (s *InMemoryStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []URLInfo {
-	s.mx.RLock()
-	defer s.mx.RUnlock()
+	s.RLock()
+	defer s.RUnlock()
 
 	urls := make([]URLInfo, 0, len(s.userURLs))
-	for shortURL, originalURL := range s.userURLs[userID].urls {
+	for shortURL, urlInfo := range s.userURLs {
+		if urlInfo.userID != userID {
+			continue
+		}
 		short := strconv.FormatInt(shortURL, 10)
 		url := URLInfo{
 			ShortURL:    beginURL + short,
-			OriginalURL: originalURL,
+			OriginalURL: urlInfo.url,
 		}
 		urls = append(urls, url)
 	}

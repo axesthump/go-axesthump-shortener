@@ -4,11 +4,14 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"io"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 )
+
+const splitSeq = "~s~e~c~"
 
 type LocalStorage struct {
 	mx     *sync.RWMutex
@@ -35,7 +38,7 @@ func getLastID(file *os.File) int64 {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		data := string(scanner.Bytes())
-		urlData := strings.Split(data, "~")
+		urlData := strings.Split(data, splitSeq)
 		if len(urlData) != 3 {
 			panic(errors.New("bad data in file"))
 		}
@@ -44,20 +47,28 @@ func getLastID(file *os.File) int64 {
 			panic(errors.New("bad data in file"))
 		}
 	}
+	_, err = file.Seek(0, io.SeekStart)
+	if err != nil {
+		return 0
+	}
 	return lastID + 1
 }
 
 func (ls *LocalStorage) GetUserLastID() uint32 {
 	var lastID int64
 	var err error
+	var max int64 = 0
 	scanner := bufio.NewScanner(ls.file)
 	for scanner.Scan() {
 		data := string(scanner.Bytes())
-		urlData := strings.Split(data, "~")
+		urlData := strings.Split(data, splitSeq)
 		if len(urlData) != 3 {
 			panic(errors.New("bad data in file"))
 		}
 		lastID, err = strconv.ParseInt(urlData[0], 10, 64)
+		if lastID > max {
+			max = lastID
+		}
 		if err != nil {
 			panic(errors.New("bad data in file"))
 		}
@@ -75,7 +86,7 @@ func (ls *LocalStorage) CreateShortURL(
 	defer ls.mx.Unlock()
 	shortEndpoint := strconv.FormatInt(ls.lastID, 10)
 	shortURL := beginURL + shortEndpoint
-	data := strconv.FormatInt(int64(userID), 10) + "~" + strconv.FormatInt(ls.lastID, 10) + "~" + originalURL
+	data := strconv.FormatInt(int64(userID), 10) + splitSeq + strconv.FormatInt(ls.lastID, 10) + splitSeq + originalURL
 
 	wr := bufio.NewWriter(ls.file)
 	if _, err := wr.WriteString(data + "\n"); err != nil {
@@ -119,7 +130,7 @@ func (ls *LocalStorage) GetFullURL(ctx context.Context, shortURL int64) (string,
 	scanner := bufio.NewScanner(fileForRead)
 	for scanner.Scan() {
 		data := scanner.Text()
-		urlData := strings.Split(data, "~")
+		urlData := strings.Split(data, splitSeq)
 		if len(urlData) != 3 {
 			panic(errors.New("bad data in file"))
 		}
@@ -146,7 +157,7 @@ func (ls *LocalStorage) GetAllURLs(ctx context.Context, beginURL string, userID 
 	scanner := bufio.NewScanner(fileForRead)
 	for scanner.Scan() {
 		data := scanner.Text()
-		urlData := strings.Split(data, "~")
+		urlData := strings.Split(data, splitSeq)
 		if len(urlData) != 3 {
 			continue
 		}

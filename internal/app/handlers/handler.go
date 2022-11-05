@@ -52,16 +52,16 @@ func NewRouter(appHandler *AppHandler) chi.Router {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Get("/ping", appHandler.ping())
-	r.Get("/{shortURL}", appHandler.getURL())
-	r.Post("/", appHandler.addURL())
+	r.Get("/ping", appHandler.ping)
+	r.Get("/{shortURL}", appHandler.getURL)
+	r.Post("/", appHandler.addURL)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/shorten", func(r chi.Router) {
-			r.Post("/", appHandler.addURLRest())
-			r.Post("/batch", appHandler.addListURLRest())
+			r.Post("/", appHandler.addURLRest)
+			r.Post("/batch", appHandler.addListURLRest)
 		})
-		r.Get("/user/urls", appHandler.listURLs())
+		r.Get("/user/urls", appHandler.listURLs)
 	})
 
 	return r
@@ -78,40 +78,38 @@ func NewAppHandler(config *config.AppConfig) *AppHandler {
 	return h
 }
 
-func (a *AppHandler) addURLRest() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "application/json")
+func (a *AppHandler) addURLRest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
 
-		var body []byte
-		var err error
-		if body, err = readBody(w, r.Body); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		var requestURL requestURL
-		if err = json.Unmarshal(body, &requestURL); err != nil || len(requestURL.URL) == 0 {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
-		status := http.StatusCreated
-		var shortURL string
-		if shortURL, err = a.repo.CreateShortURL(r.Context(), a.baseURL, requestURL.URL, userID); err != nil {
-			if errors.Is(err, &repository.LongURLConflictError{}) {
-				status = http.StatusConflict
-			} else {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-		}
-		buf, err := a.createAddURLResponse(w, shortURL)
-		if err != nil {
-			return
-		}
-		sendResponse(w, buf, status)
+	var body []byte
+	var err error
+	if body, err = readBody(w, r.Body); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
+
+	var requestURL requestURL
+	if err = json.Unmarshal(body, &requestURL); err != nil || len(requestURL.URL) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
+	status := http.StatusCreated
+	var shortURL string
+	if shortURL, err = a.repo.CreateShortURL(r.Context(), a.baseURL, requestURL.URL, userID); err != nil {
+		if errors.Is(err, &repository.LongURLConflictError{}) {
+			status = http.StatusConflict
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+	buf, err := a.createAddURLResponse(w, shortURL)
+	if err != nil {
+		return
+	}
+	sendResponse(w, buf, status)
 }
 
 func (a *AppHandler) createAddURLResponse(w http.ResponseWriter, shortURL string) ([]byte, error) {
@@ -126,139 +124,129 @@ func (a *AppHandler) createAddURLResponse(w http.ResponseWriter, shortURL string
 	return buf.Bytes(), nil
 }
 
-func (a *AppHandler) addURL() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "text/plain")
+func (a *AppHandler) addURL(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "text/plain")
 
-		body, err := readBody(w, r.Body)
-		if err != nil {
-			return
-		}
-		url := string(body)
-		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
-		shortURL, err := a.repo.CreateShortURL(r.Context(), a.baseURL, url, userID)
-		status := http.StatusCreated
-		if err != nil {
-			if errors.Is(err, &repository.LongURLConflictError{}) {
-				status = http.StatusConflict
-			} else {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-		}
-		sendResponse(w, []byte(shortURL), status)
+	body, err := readBody(w, r.Body)
+	if err != nil {
+		return
 	}
-}
-
-func (a *AppHandler) getURL() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		url := chi.URLParam(r, "shortURL")
-
-		shortURL, err := strconv.ParseInt(url, 10, 64)
-		if err != nil {
+	url := string(body)
+	userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
+	shortURL, err := a.repo.CreateShortURL(r.Context(), a.baseURL, url, userID)
+	status := http.StatusCreated
+	if err != nil {
+		if errors.Is(err, &repository.LongURLConflictError{}) {
+			status = http.StatusConflict
+		} else {
 			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		fullURL, err := a.repo.GetFullURL(r.Context(), shortURL)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		w.Header().Set("Location", fullURL)
-		w.WriteHeader(http.StatusTemporaryRedirect)
-	}
-}
-
-func (a *AppHandler) listURLs() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
-		urls := a.repo.GetAllURLs(r.Context(), a.baseURL, userID)
-
-		log.Printf("Urls len - %d\n", len(urls))
-
-		if len(urls) == 0 {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-
-		var resp []byte
-		var err error
-		if resp, err = json.Marshal(&urls); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		_, err = w.Write(resp)
-		if err != nil {
 			return
 		}
 	}
+	sendResponse(w, []byte(shortURL), status)
 }
 
-func (a *AppHandler) ping() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if a.dbConn == nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		defer cancel()
-		if err := a.dbConn.Ping(ctx); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
+func (a *AppHandler) getURL(w http.ResponseWriter, r *http.Request) {
+	url := chi.URLParam(r, "shortURL")
+
+	shortURL, err := strconv.ParseInt(url, 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	fullURL, err := a.repo.GetFullURL(r.Context(), shortURL)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Location", fullURL)
+	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func (a *AppHandler) listURLs(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
+	urls := a.repo.GetAllURLs(r.Context(), a.baseURL, userID)
+
+	log.Printf("Urls len - %d\n", len(urls))
+
+	if len(urls) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	var resp []byte
+	var err error
+	if resp, err = json.Marshal(&urls); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	_, err = w.Write(resp)
+	if err != nil {
+		return
 	}
 }
 
-func (a *AppHandler) addListURLRest() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		body, err := readBody(w, r.Body)
-		if err != nil {
-			return
-		}
-		userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
-		var urlsForShort []addListURLsRequest
-		if err := json.Unmarshal(body, &urlsForShort); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+func (a *AppHandler) ping(w http.ResponseWriter, r *http.Request) {
+	if a.dbConn == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	if err := a.dbConn.Ping(ctx); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
 
-		convertedURLs := make([]repository.URLWithID, 0, len(urlsForShort))
-		for _, url := range urlsForShort {
-			convertedURLs = append(convertedURLs, repository.URLWithID{
-				CorrelationID: url.CorrelationID,
-				URL:           url.OriginalURL,
-			})
-		}
+func (a *AppHandler) addListURLRest(w http.ResponseWriter, r *http.Request) {
+	body, err := readBody(w, r.Body)
+	if err != nil {
+		return
+	}
+	userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
+	var urlsForShort []addListURLsRequest
+	if err := json.Unmarshal(body, &urlsForShort); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
-		shortenURLs, err := a.repo.CreateShortURLs(r.Context(), a.baseURL, convertedURLs, userID)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+	convertedURLs := make([]repository.URLWithID, 0, len(urlsForShort))
+	for _, url := range urlsForShort {
+		convertedURLs = append(convertedURLs, repository.URLWithID{
+			CorrelationID: url.CorrelationID,
+			URL:           url.OriginalURL,
+		})
+	}
 
-		shortenURLsResponse := make([]addListURLsResponse, 0, len(shortenURLs))
-		for _, shortenURL := range shortenURLs {
-			shortenURLsResponse = append(shortenURLsResponse, addListURLsResponse{
-				CorrelationID: shortenURL.CorrelationID,
-				ShortURL:      shortenURL.URL,
-			})
-		}
+	shortenURLs, err := a.repo.CreateShortURLs(r.Context(), a.baseURL, convertedURLs, userID)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
-		resBody, err := json.Marshal(&shortenURLsResponse)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+	shortenURLsResponse := make([]addListURLsResponse, 0, len(shortenURLs))
+	for _, shortenURL := range shortenURLs {
+		shortenURLsResponse = append(shortenURLsResponse, addListURLsResponse{
+			CorrelationID: shortenURL.CorrelationID,
+			ShortURL:      shortenURL.URL,
+		})
+	}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		_, err = w.Write(resBody)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+	resBody, err := json.Marshal(&shortenURLsResponse)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_, err = w.Write(resBody)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 }
 
