@@ -90,7 +90,7 @@ func setParametersFromEnv(config *AppConfig) {
 		config.storagePath = os.Getenv("FILE_STORAGE_PATH")
 	}
 	if config.dbConnURL == "" {
-		config.storagePath = os.Getenv("DATABASE_DSN")
+		config.dbConnURL = os.Getenv("DATABASE_DSN")
 	}
 }
 
