@@ -9,6 +9,11 @@ type URLInfo struct {
 	OriginalURL string `json:"original_url"`
 }
 
+type DeleteURL struct {
+	URL    string
+	UserID uint32
+}
+
 type URLWithID struct {
 	CorrelationID string
 	URL           string
@@ -19,5 +24,6 @@ type Repository interface {
 	CreateShortURLs(ctx context.Context, beginURL string, urls []URLWithID, userID uint32) ([]URLWithID, error)
 	GetFullURL(ctx context.Context, shortURL int64) (string, error)
 	GetAllURLs(ctx context.Context, beginURL string, userID uint32) []URLInfo
+	DeleteURLs(urlsForDelete []DeleteURL) error
 	Close() error
 }

@@ -90,6 +90,10 @@ func (s *InMemoryStorage) CreateShortURLs(
 	return res, nil
 }
 
+func (s *InMemoryStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
+	return nil
+}
+
 func (s *InMemoryStorage) Close() error {
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go-axesthump-shortener/internal/app/mocks"
 	"go-axesthump-shortener/internal/app/repository"
+	"go-axesthump-shortener/internal/app/service"
 	"go-axesthump-shortener/internal/app/user"
 	"io"
 	"net/http"
@@ -40,6 +41,9 @@ func (m *mockStorage) GetFullURL(ctx context.Context, shortURL int64) (string, e
 
 func (m *mockStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []repository.URLInfo {
 	return make([]repository.URLInfo, 0)
+}
+
+func (m *mockStorage) DeleteURLs(urlsForDelete []repository.DeleteURL, ds *service.DeleteService) {
 }
 
 func (m *mockStorage) Close() error {

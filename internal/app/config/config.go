@@ -5,6 +5,7 @@ import (
 	"flag"
 	"github.com/jackc/pgx/v5"
 	"go-axesthump-shortener/internal/app/repository"
+	"go-axesthump-shortener/internal/app/service"
 	"go-axesthump-shortener/internal/app/user"
 	"go-axesthump-shortener/internal/app/util"
 	"os"
@@ -17,6 +18,7 @@ type AppConfig struct {
 	DBContext       context.Context
 	Conn            *pgx.Conn
 	UserIDGenerator *user.IDGenerator
+	DeleteService   *service.DeleteService
 
 	storagePath string
 	dbConnURL   string
@@ -29,6 +31,7 @@ func CreateAppConfig() (*AppConfig, error) {
 	if err := setStorage(appConfig); err != nil {
 		return nil, err
 	}
+	appConfig.DeleteService = service.NewDeleteService(appConfig.Repo, appConfig.BaseURL)
 	return appConfig, nil
 }
 
@@ -49,7 +52,7 @@ func setDBConn(config *AppConfig) {
 }
 
 func createTable(config *AppConfig) {
-	query := "CREATE TABLE IF NOT EXISTS shortener (shortener_id SERIAL PRIMARY KEY, long_url varchar(255) NOT NULL UNIQUE, user_id int NOT NULL); CREATE INDEX IF NOT EXISTS idx_shortener_user_id ON shortener(user_id);"
+	query := "CREATE TABLE IF NOT EXISTS shortener (shortener_id SERIAL PRIMARY KEY, long_url varchar(255) NOT NULL UNIQUE, user_id int NOT NULL, is_deleted BOOLEAN DEFAULT FALSE); CREATE INDEX IF NOT EXISTS idx_shortener_user_id ON shortener(user_id);"
 	_, err := config.Conn.Exec(config.DBContext, query)
 	if err != nil {
 		panic(err)

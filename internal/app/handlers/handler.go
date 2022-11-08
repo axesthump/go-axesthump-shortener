@@ -11,6 +11,7 @@ import (
 	"go-axesthump-shortener/internal/app/config"
 	myMiddleware "go-axesthump-shortener/internal/app/middleware"
 	"go-axesthump-shortener/internal/app/repository"
+	"go-axesthump-shortener/internal/app/service"
 	"go-axesthump-shortener/internal/app/user"
 	"io"
 	"log"
@@ -24,6 +25,7 @@ type AppHandler struct {
 	userIDGenerator *user.IDGenerator
 	baseURL         string
 	dbConn          *pgx.Conn
+	deleteService   *service.DeleteService
 	Router          chi.Router
 }
 
@@ -61,7 +63,10 @@ func NewRouter(appHandler *AppHandler) chi.Router {
 			r.Post("/", appHandler.addURLRest)
 			r.Post("/batch", appHandler.addListURLRest)
 		})
-		r.Get("/user/urls", appHandler.listURLs)
+		r.Route("/user/urls", func(r chi.Router) {
+			r.Get("/", appHandler.listURLs)
+			r.Delete("/", appHandler.deleteListURLs)
+		})
 	})
 
 	return r
@@ -73,6 +78,7 @@ func NewAppHandler(config *config.AppConfig) *AppHandler {
 		baseURL:         config.BaseURL + "/",
 		dbConn:          config.Conn,
 		userIDGenerator: config.UserIDGenerator,
+		deleteService:   config.DeleteService,
 	}
 	h.Router = NewRouter(h)
 	return h
@@ -156,8 +162,13 @@ func (a *AppHandler) getURL(w http.ResponseWriter, r *http.Request) {
 	}
 	fullURL, err := a.repo.GetFullURL(r.Context(), shortURL)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		if errors.Is(err, &repository.DeletedURLError{}) {
+			w.WriteHeader(http.StatusGone)
+			return
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	}
 	w.Header().Set("Location", fullURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
@@ -185,6 +196,17 @@ func (a *AppHandler) listURLs(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+}
+
+func (a *AppHandler) deleteListURLs(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	a.deleteService.AddURLs(string(body), userID)
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (a *AppHandler) ping(w http.ResponseWriter, r *http.Request) {

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"github.com/jackc/pgx/v5"
@@ -9,6 +10,13 @@ import (
 )
 
 type LongURLConflictError struct {
+}
+
+type DeletedURLError struct {
+}
+
+func (e *DeletedURLError) Error() string {
+	return "URL deleted"
 }
 
 func (e *LongURLConflictError) Error() string {
@@ -84,12 +92,16 @@ func (db *dbStorage) GetShortURLByFullURL(ctx context.Context, fullURL string) (
 }
 
 func (db *dbStorage) GetFullURL(ctx context.Context, shortURL int64) (string, error) {
-	query := "SELECT long_url FROM shortener WHERE shortener_id = $1"
+	query := "SELECT long_url, is_deleted FROM shortener WHERE shortener_id = $1"
 	row := db.conn.QueryRow(ctx, query, shortURL)
 	var longURL = new(string)
-	err := row.Scan(longURL)
+	var isDeleted = new(bool)
+	err := row.Scan(longURL, isDeleted)
 	if err != nil {
 		return "", err
+	}
+	if *isDeleted {
+		return "", &DeletedURLError{}
 	}
 	return *longURL, nil
 }
@@ -156,6 +168,44 @@ func (db *dbStorage) CreateShortURLs(
 		return nil, err
 	}
 	return res, nil
+}
+
+func (db *dbStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
+	tx, err := db.conn.Begin(db.ctx)
+	if err != nil {
+		return err
+	}
+	q, err := createQueryForDelete(urlsForDelete)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(db.ctx, q, urlsForDelete[0].UserID)
+	if err != nil {
+		e := tx.Rollback(db.ctx)
+		if e != nil {
+			return e
+		}
+		return err
+	}
+	err = tx.Commit(db.ctx)
+	return err
+}
+
+func createQueryForDelete(urlsForDelete []DeleteURL) (string, error) {
+	buff := bytes.Buffer{}
+	_, err := buff.WriteString("UPDATE shortener SET is_deleted = true WHERE shortener_id in (")
+	if err != nil {
+		return "", err
+	}
+	sep := ""
+	for _, url := range urlsForDelete {
+		buff.WriteString(sep)
+		buff.WriteString(url.URL)
+		sep = ","
+	}
+	buff.WriteString(") AND user_id = $1;")
+	return buff.String(), nil
 }
 
 func (db *dbStorage) Close() error {
