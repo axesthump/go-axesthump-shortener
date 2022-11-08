@@ -2,10 +2,14 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"errors"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go-axesthump-shortener/internal/app/mocks"
 	"go-axesthump-shortener/internal/app/repository"
+	"go-axesthump-shortener/internal/app/user"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -22,11 +26,11 @@ type mockStorage struct {
 	needError bool
 }
 
-func (m *mockStorage) CreateShortURL(beginURL string, url string) (string, error) {
+func (m *mockStorage) CreateShortURL(ctx context.Context, beginURL string, originalURL string, userID uint32) (string, error) {
 	return shortURL, nil
 }
 
-func (m *mockStorage) GetFullURL(shortURL int64) (string, error) {
+func (m *mockStorage) GetFullURL(ctx context.Context, shortURL int64) (string, error) {
 	if m.needError {
 		return "", errors.New("error")
 	} else {
@@ -34,8 +38,22 @@ func (m *mockStorage) GetFullURL(shortURL int64) (string, error) {
 	}
 }
 
+func (m *mockStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []repository.URLInfo {
+	return make([]repository.URLInfo, 0)
+}
+
 func (m *mockStorage) Close() error {
 	return nil
+}
+
+func (m *mockStorage) CreateShortURLs(
+	ctx context.Context,
+	beginURL string,
+	urls []repository.URLWithID,
+	userID uint32,
+) ([]repository.URLWithID, error) {
+	res := make([]repository.URLWithID, 0, len(urls))
+	return res, nil
 }
 
 func TestAppHandler_getURL(t *testing.T) {
@@ -121,7 +139,8 @@ func TestAppHandler_getURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
-				repo: tt.fields.storage,
+				repo:            tt.fields.storage,
+				userIDGenerator: user.NewUserIDGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)
@@ -208,7 +227,8 @@ func TestAppHandler_addURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
-				repo: tt.fields.storage,
+				repo:            tt.fields.storage,
+				userIDGenerator: user.NewUserIDGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)
@@ -312,7 +332,8 @@ func TestAppHandler_addURLRest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
-				repo: tt.fields.storage,
+				repo:            tt.fields.storage,
+				userIDGenerator: user.NewUserIDGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)
@@ -333,6 +354,72 @@ func TestAppHandler_addURLRest(t *testing.T) {
 				}
 				assert.Equal(t, tt.want.body, strings.TrimRight(string(body), "\n"))
 			}
+		})
+	}
+}
+
+func TestAppHandler_listURLs(t *testing.T) {
+	type want struct {
+		urls       string
+		statusCode int
+		needEmpty  bool
+	}
+	tests := []struct {
+		name string
+		want want
+	}{
+		{
+			name: "check not empty",
+			want: want{
+				statusCode: http.StatusOK,
+				urls:       `[{"short_url":"short","original_url":"original"}]`,
+				needEmpty:  false,
+			},
+		},
+		{
+			name: "check empty",
+			want: want{
+				statusCode: http.StatusNoContent,
+				needEmpty:  true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			repo := mocks.NewMockRepository(ctrl)
+			defer ctrl.Finish()
+			a := &AppHandler{
+				repo:            repo,
+				userIDGenerator: user.NewUserIDGenerator(0),
+			}
+			r := NewRouter(a)
+			ts := httptest.NewServer(r)
+			defer ts.Close()
+			a.baseURL = ts.URL
+
+			if tt.want.needEmpty {
+				repo.EXPECT().GetAllURLs(gomock.Any(), gomock.Any(), gomock.Any()).Return([]repository.URLInfo{})
+			} else {
+				repo.EXPECT().GetAllURLs(gomock.Any(), gomock.Any(), gomock.Any()).Return([]repository.URLInfo{
+					{
+						ShortURL:    "short",
+						OriginalURL: "original",
+					},
+				})
+			}
+
+			request, err := http.NewRequest(http.MethodGet, ts.URL+"/api/user/urls", nil)
+			require.NoError(t, err)
+			res, err := http.DefaultClient.Do(request)
+			require.NoError(t, err)
+
+			defer res.Body.Close()
+			body, err := io.ReadAll(res.Body)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want.statusCode, res.StatusCode)
+			assert.Equal(t, tt.want.urls, strings.TrimRight(string(body), "\n"))
 		})
 	}
 }

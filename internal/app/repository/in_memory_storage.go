@@ -1,44 +1,93 @@
 package repository
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"sync"
 )
 
+type StorageURL struct {
+	url    string
+	userID uint32
+}
+
 type InMemoryStorage struct {
-	mx     *sync.RWMutex
-	urls   map[int64]string
-	lastID int64
+	sync.RWMutex
+	userURLs map[int64]StorageURL
+	lastID   int64
 }
 
 func NewInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
-		mx:     &sync.RWMutex{},
-		urls:   make(map[int64]string, 0),
-		lastID: int64(0),
+		userURLs: make(map[int64]StorageURL),
+		lastID:   int64(0),
 	}
 }
 
-func (s *InMemoryStorage) CreateShortURL(beginURL string, url string) (string, error) {
-
-	s.mx.Lock()
-	defer s.mx.Unlock()
-	s.urls[s.lastID] = url
+func (s *InMemoryStorage) CreateShortURL(
+	ctx context.Context,
+	beginURL string,
+	originalURL string,
+	userID uint32,
+) (string, error) {
+	s.Lock()
+	defer s.Unlock()
 	shortEndpoint := strconv.FormatInt(s.lastID, 10)
 	shortURL := beginURL + shortEndpoint
+	s.userURLs[s.lastID] = StorageURL{
+		url:    originalURL,
+		userID: userID,
+	}
 	s.lastID++
 	return shortURL, nil
 }
 
-func (s *InMemoryStorage) GetFullURL(shortURL int64) (string, error) {
-	s.mx.RLock()
-	defer s.mx.RUnlock()
-	if longURL, ok := s.urls[shortURL]; ok {
-		return longURL, nil
-	} else {
-		return "", fmt.Errorf("url dont exist")
+func (s *InMemoryStorage) GetFullURL(ctx context.Context, shortURL int64) (string, error) {
+	s.RLock()
+	defer s.RUnlock()
+	if url, ok := s.userURLs[shortURL]; ok {
+		return url.url, nil
 	}
+	return "", fmt.Errorf("url dont exist")
+}
+
+func (s *InMemoryStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []URLInfo {
+	s.RLock()
+	defer s.RUnlock()
+
+	urls := make([]URLInfo, 0, len(s.userURLs))
+	for shortURL, urlInfo := range s.userURLs {
+		if urlInfo.userID != userID {
+			continue
+		}
+		short := strconv.FormatInt(shortURL, 10)
+		url := URLInfo{
+			ShortURL:    beginURL + short,
+			OriginalURL: urlInfo.url,
+		}
+		urls = append(urls, url)
+	}
+	return urls
+}
+func (s *InMemoryStorage) CreateShortURLs(
+	ctx context.Context,
+	beginURL string,
+	urls []URLWithID,
+	userID uint32,
+) ([]URLWithID, error) {
+	res := make([]URLWithID, 0, len(urls))
+	for _, url := range urls {
+		shortURL, err := s.CreateShortURL(ctx, beginURL, url.URL, userID)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, URLWithID{
+			CorrelationID: url.CorrelationID,
+			URL:           shortURL,
+		})
+	}
+	return res, nil
 }
 
 func (s *InMemoryStorage) Close() error {
