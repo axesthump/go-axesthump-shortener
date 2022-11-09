@@ -1,30 +1,39 @@
 package service
 
 import (
-	"go-axesthump-shortener/internal/app/repository"
+	"bytes"
+	"context"
+	"github.com/jackc/pgx/v5"
 	"strings"
 )
 
-type DeleteService struct {
-	urlsForDelete chan []repository.DeleteURL
-	repository    repository.Repository
-	baseURL       string
+type deleteURL struct {
+	url    string
+	userID uint32
 }
 
-func NewDeleteService(r repository.Repository, baseURL string) *DeleteService {
+type DeleteService struct {
+	urlsForDelete chan []deleteURL
+	conn          *pgx.Conn
+	baseURL       string
+	ctx           context.Context
+}
+
+func NewDeleteService(ctx context.Context, conn *pgx.Conn, baseURL string) *DeleteService {
 	ds := &DeleteService{
-		urlsForDelete: make(chan []repository.DeleteURL),
-		repository:    r,
+		urlsForDelete: make(chan []deleteURL),
+		conn:          conn,
 		baseURL:       baseURL,
+		ctx:           ctx,
 	}
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 3; i++ {
 		go func(ds *DeleteService) {
 			for {
 				data, ok := <-ds.urlsForDelete
 				if !ok {
 					return
 				}
-				err := r.DeleteURLs(data)
+				err := ds.deleteURLs(data)
 				if err != nil {
 					ds.reAddURLs(data)
 				}
@@ -41,24 +50,65 @@ func (ds *DeleteService) AddURLs(data string, userID uint32) {
 	}()
 }
 
-func (ds *DeleteService) reAddURLs(urls []repository.DeleteURL) {
+func (ds *DeleteService) reAddURLs(urls []deleteURL) {
 	go func() {
 		ds.urlsForDelete <- urls
 	}()
+}
+
+func (ds *DeleteService) deleteURLs(urlsForDelete []deleteURL) error {
+	if ds.conn == nil {
+		return nil
+	}
+	tx, err := ds.conn.Begin(ds.ctx)
+	if err != nil {
+		return err
+	}
+	q, err := createQueryForDelete(urlsForDelete)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ds.ctx, q, urlsForDelete[0].userID)
+	if err != nil {
+		e := tx.Rollback(ds.ctx)
+		if e != nil {
+			return e
+		}
+		return err
+	}
+	err = tx.Commit(ds.ctx)
+	return err
+}
+
+func createQueryForDelete(urlsForDelete []deleteURL) (string, error) {
+	buff := bytes.Buffer{}
+	_, err := buff.WriteString("UPDATE shortener SET is_deleted = true WHERE shortener_id in (")
+	if err != nil {
+		return "", err
+	}
+	sep := ""
+	for _, url := range urlsForDelete {
+		buff.WriteString(sep)
+		buff.WriteString(url.url)
+		sep = ","
+	}
+	buff.WriteString(") AND user_id = $1;")
+	return buff.String(), nil
 }
 
 func (ds *DeleteService) Close() {
 	close(ds.urlsForDelete)
 }
 
-func getURLsFromArr(data string, userID uint32, baseURL string) []repository.DeleteURL {
+func getURLsFromArr(data string, userID uint32, baseURL string) []deleteURL {
 	data = data[1 : len(data)-1]
 	data = strings.ReplaceAll(data, "\"", "")
 	splitData := strings.Split(data, ",")
-	urls := make([]repository.DeleteURL, len(splitData))
+	urls := make([]deleteURL, len(splitData))
 	for i, url := range splitData {
 		url = strings.TrimPrefix(url, baseURL+"/")
-		urls[i] = repository.DeleteURL{URL: url, UserID: userID}
+		urls[i] = deleteURL{url: url, userID: userID}
 	}
 	return urls
 }

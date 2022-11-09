@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"github.com/jackc/pgx/v5"
@@ -168,44 +167,6 @@ func (db *dbStorage) CreateShortURLs(
 		return nil, err
 	}
 	return res, nil
-}
-
-func (db *dbStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
-	tx, err := db.conn.Begin(db.ctx)
-	if err != nil {
-		return err
-	}
-	q, err := createQueryForDelete(urlsForDelete)
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec(db.ctx, q, urlsForDelete[0].UserID)
-	if err != nil {
-		e := tx.Rollback(db.ctx)
-		if e != nil {
-			return e
-		}
-		return err
-	}
-	err = tx.Commit(db.ctx)
-	return err
-}
-
-func createQueryForDelete(urlsForDelete []DeleteURL) (string, error) {
-	buff := bytes.Buffer{}
-	_, err := buff.WriteString("UPDATE shortener SET is_deleted = true WHERE shortener_id in (")
-	if err != nil {
-		return "", err
-	}
-	sep := ""
-	for _, url := range urlsForDelete {
-		buff.WriteString(sep)
-		buff.WriteString(url.URL)
-		sep = ","
-	}
-	buff.WriteString(") AND user_id = $1;")
-	return buff.String(), nil
 }
 
 func (db *dbStorage) Close() error {

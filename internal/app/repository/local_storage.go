@@ -145,10 +145,6 @@ func (ls *LocalStorage) GetFullURL(ctx context.Context, shortURL int64) (string,
 	return "", errors.New("url nor found")
 }
 
-func (ls *LocalStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
-	return nil
-}
-
 func (ls *LocalStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []URLInfo {
 	ls.mx.RLock()
 	defer ls.mx.RUnlock()
