@@ -73,7 +73,7 @@ func (ls *LocalStorage) GetUserLastID() uint32 {
 			panic(errors.New("bad data in file"))
 		}
 	}
-	return uint32(lastID + 1)
+	return uint32(max + 1)
 }
 
 func (ls *LocalStorage) CreateShortURL(
