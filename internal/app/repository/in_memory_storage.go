@@ -15,13 +15,13 @@ type StorageURL struct {
 
 type InMemoryStorage struct {
 	sync.RWMutex
-	userURLs map[int64]StorageURL
+	userURLs map[int64]*StorageURL
 	lastID   int64
 }
 
 func NewInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
-		userURLs: make(map[int64]StorageURL),
+		userURLs: make(map[int64]*StorageURL),
 		lastID:   int64(0),
 	}
 }
@@ -36,7 +36,7 @@ func (s *InMemoryStorage) CreateShortURL(
 	defer s.Unlock()
 	shortEndpoint := strconv.FormatInt(s.lastID, 10)
 	shortURL := beginURL + shortEndpoint
-	s.userURLs[s.lastID] = StorageURL{
+	s.userURLs[s.lastID] = &StorageURL{
 		url:    originalURL,
 		userID: userID,
 	}
@@ -104,7 +104,6 @@ func (s *InMemoryStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 		if savedURL, ok := s.userURLs[shortURL]; ok {
 			if savedURL.userID == urlForDelete.UserID {
 				savedURL.isDeleted = true
-				s.userURLs[shortURL] = savedURL
 			}
 		}
 	}
