@@ -71,7 +71,7 @@ func (ds *DeleteService) deleteURLs(urlsForDelete []deleteURL) error {
 	}
 	q, err := createQueryForDelete(urlsForDelete)
 	if err != nil {
-		return err
+		return nil
 	}
 
 	_, err = tx.Exec(ds.ctx, q, urlsForDelete[0].userID)
@@ -80,7 +80,7 @@ func (ds *DeleteService) deleteURLs(urlsForDelete []deleteURL) error {
 		if e != nil {
 			return e
 		}
-		return err
+		return nil
 	}
 	err = tx.Commit(ds.ctx)
 	return err
@@ -112,6 +112,7 @@ func getURLsFromArr(data string, userID uint32, baseURL string) []deleteURL {
 	splitData := strings.Split(data, ",")
 	urls := make([]deleteURL, len(splitData))
 	for i, url := range splitData {
+		url = strings.TrimSpace(url)
 		url = strings.TrimPrefix(url, baseURL+"/")
 		urls[i] = deleteURL{url: url, userID: userID}
 	}
