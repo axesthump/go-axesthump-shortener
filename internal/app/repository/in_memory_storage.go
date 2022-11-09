@@ -8,8 +8,9 @@ import (
 )
 
 type StorageURL struct {
-	url    string
-	userID uint32
+	url       string
+	userID    uint32
+	isDeleted bool
 }
 
 type InMemoryStorage struct {
@@ -47,9 +48,12 @@ func (s *InMemoryStorage) GetFullURL(ctx context.Context, shortURL int64) (strin
 	s.RLock()
 	defer s.RUnlock()
 	if url, ok := s.userURLs[shortURL]; ok {
+		if url.isDeleted {
+			return "", &DeletedURLError{}
+		}
 		return url.url, nil
 	}
-	return "", fmt.Errorf("url dont exist")
+	return "", fmt.Errorf("URL dont exist")
 }
 
 func (s *InMemoryStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []URLInfo {
@@ -88,6 +92,25 @@ func (s *InMemoryStorage) CreateShortURLs(
 		})
 	}
 	return res, nil
+}
+
+func (s *InMemoryStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
+	s.Lock()
+	for _, url := range urlsForDelete {
+		shortURL, err := strconv.ParseInt(url.URL, 10, 64)
+		if err != nil {
+			return err
+		}
+		savedURL, ok := s.userURLs[shortURL]
+		if !ok {
+			continue
+		}
+		if savedURL.userID == url.UserID {
+			savedURL.isDeleted = true
+		}
+	}
+	s.Unlock()
+	return nil
 }
 
 func (s *InMemoryStorage) Close() error {

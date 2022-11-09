@@ -32,7 +32,7 @@ func CreateAppConfig() (*AppConfig, error) {
 	if err := setStorage(appConfig); err != nil {
 		return nil, err
 	}
-	appConfig.DeleteService = service.NewDeleteService(appConfig.DBContext, appConfig.Conn, appConfig.BaseURL)
+	appConfig.DeleteService = service.NewDeleteService(appConfig.Repo, appConfig.BaseURL)
 	return appConfig, nil
 }
 
