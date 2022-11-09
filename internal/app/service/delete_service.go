@@ -67,15 +67,19 @@ func (ds *DeleteService) deleteURLs(urlsForDelete []deleteURL) error {
 	}
 	tx, err := ds.conn.Begin(ds.ctx)
 	if err != nil {
+		log.Printf("tx error - %s", err)
 		return err
 	}
 	q, err := createQueryForDelete(urlsForDelete)
+
 	if err != nil {
+		log.Printf("createQueryForDelete error - %s", err)
 		return nil
 	}
 
 	_, err = tx.Exec(ds.ctx, q, urlsForDelete[0].userID)
 	if err != nil {
+		log.Printf("Exec error - %s", err)
 		e := tx.Rollback(ds.ctx)
 		if e != nil {
 			return e
