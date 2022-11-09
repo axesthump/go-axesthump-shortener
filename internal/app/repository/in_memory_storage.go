@@ -96,17 +96,16 @@ func (s *InMemoryStorage) CreateShortURLs(
 
 func (s *InMemoryStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	s.Lock()
-	for _, url := range urlsForDelete {
-		shortURL, err := strconv.ParseInt(url.URL, 10, 64)
+	for _, urlForDelete := range urlsForDelete {
+		shortURL, err := strconv.ParseInt(urlForDelete.URL, 10, 64)
 		if err != nil {
 			return err
 		}
-		savedURL, ok := s.userURLs[shortURL]
-		if !ok {
-			continue
-		}
-		if savedURL.userID == url.UserID {
-			savedURL.isDeleted = true
+		if savedURL, ok := s.userURLs[shortURL]; ok {
+			if savedURL.userID == urlForDelete.UserID {
+				savedURL.isDeleted = true
+				s.userURLs[shortURL] = savedURL
+			}
 		}
 	}
 	s.Unlock()
