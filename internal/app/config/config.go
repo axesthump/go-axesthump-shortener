@@ -8,6 +8,7 @@ import (
 	"go-axesthump-shortener/internal/app/service"
 	"go-axesthump-shortener/internal/app/user"
 	"go-axesthump-shortener/internal/app/util"
+	"log"
 	"os"
 )
 
@@ -63,13 +64,16 @@ func setStorage(config *AppConfig) error {
 	var lastUserID uint32
 	switch {
 	case config.Conn != nil:
+		log.Printf("Use db repository!")
 		db := repository.NewDBStorage(config.DBContext, config.Conn)
 		config.Repo = db
 		lastUserID = uint32(db.GetLastUserID())
 	case len(config.storagePath) == 0:
+		log.Printf("Use inMemory repository!")
 		config.Repo = repository.NewInMemoryStorage()
 		lastUserID = 0
 	default:
+		log.Printf("Use localStorage repository!")
 		localStorage, err := repository.NewLocalStorage(config.storagePath)
 		if err != nil {
 			return err
