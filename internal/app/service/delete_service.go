@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/jackc/pgx/v5"
+	"log"
 	"strings"
 )
 
@@ -35,8 +36,12 @@ func NewDeleteService(ctx context.Context, conn *pgx.Conn, baseURL string) *Dele
 				}
 				err := ds.deleteURLs(data)
 				if err != nil {
+					log.Printf("Found err %s", err)
 					ds.reAddURLs(data)
+				} else {
+					log.Printf("Delete success!")
 				}
+
 			}
 
 		}(ds)
