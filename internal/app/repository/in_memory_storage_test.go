@@ -10,7 +10,7 @@ import (
 func TestStorage_CreateShortURL(t *testing.T) {
 	type fields struct {
 		mx     *sync.RWMutex
-		urls   map[int64]StorageURL
+		urls   map[int64]*StorageURL
 		lastID int64
 	}
 	type args struct {
@@ -27,7 +27,7 @@ func TestStorage_CreateShortURL(t *testing.T) {
 			name: "check success create",
 			fields: fields{
 				mx:     &sync.RWMutex{},
-				urls:   map[int64]StorageURL{},
+				urls:   map[int64]*StorageURL{},
 				lastID: 0,
 			},
 			args: args{
@@ -54,7 +54,7 @@ func TestStorage_CreateShortURL(t *testing.T) {
 func TestStorage_GetFullURL(t *testing.T) {
 	type fields struct {
 		mx     *sync.RWMutex
-		urls   map[int64]StorageURL
+		urls   map[int64]*StorageURL
 		lastID int64
 	}
 	type args struct {
@@ -71,7 +71,7 @@ func TestStorage_GetFullURL(t *testing.T) {
 			name: "check success",
 			fields: fields{
 				mx: &sync.RWMutex{},
-				urls: map[int64]StorageURL{
+				urls: map[int64]*StorageURL{
 					0: {
 						url:    "fullURL",
 						userID: 0,
@@ -89,7 +89,7 @@ func TestStorage_GetFullURL(t *testing.T) {
 			name: "check fail",
 			fields: fields{
 				mx:     &sync.RWMutex{},
-				urls:   map[int64]StorageURL{},
+				urls:   map[int64]*StorageURL{},
 				lastID: 1,
 			},
 			args: args{
@@ -119,7 +119,7 @@ func TestStorage_GetFullURL(t *testing.T) {
 
 func TestStorage_CreateShortURLDoubleCheck(t *testing.T) {
 	s := &InMemoryStorage{
-		userURLs: map[int64]StorageURL{},
+		userURLs: map[int64]*StorageURL{},
 		lastID:   0,
 	}
 	beginURL := "http://begin:8080/"
