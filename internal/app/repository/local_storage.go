@@ -9,9 +9,13 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
-const splitSeq = "~s~e~c~"
+const (
+	splitSeq       = "~s~e~c~"
+	countDataInRow = 4
+)
 
 type LocalStorage struct {
 	mx     *sync.RWMutex
@@ -37,18 +41,16 @@ func getLastID(file *os.File) int64 {
 	var err error
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		data := string(scanner.Bytes())
+		data := scanner.Text()
 		urlData := strings.Split(data, splitSeq)
-		if len(urlData) != 4 {
+		if len(urlData) != countDataInRow {
 			panic(errors.New("bad data in file"))
 		}
-		lastID, err = strconv.ParseInt(urlData[1], 10, 64)
-		if err != nil {
+		if lastID, err = strconv.ParseInt(urlData[1], 10, 64); err != nil {
 			panic(errors.New("bad data in file"))
 		}
 	}
-	_, err = file.Seek(0, io.SeekStart)
-	if err != nil {
+	if _, err = file.Seek(0, io.SeekStart); err != nil {
 		return 0
 	}
 	return lastID + 1
@@ -60,17 +62,16 @@ func (ls *LocalStorage) GetUserLastID() uint32 {
 	var max int64 = 0
 	scanner := bufio.NewScanner(ls.file)
 	for scanner.Scan() {
-		data := string(scanner.Bytes())
+		data := scanner.Text()
 		urlData := strings.Split(data, splitSeq)
-		if len(urlData) != 4 {
+		if len(urlData) != countDataInRow {
 			panic(errors.New("bad data in file"))
 		}
-		lastID, err = strconv.ParseInt(urlData[0], 10, 64)
+		if lastID, err = strconv.ParseInt(urlData[0], 10, 64); err != nil {
+			panic(errors.New("bad data in file"))
+		}
 		if lastID > max {
 			max = lastID
-		}
-		if err != nil {
-			panic(errors.New("bad data in file"))
 		}
 	}
 	return uint32(max + 1)
@@ -82,15 +83,12 @@ func (ls *LocalStorage) CreateShortURL(
 	originalURL string,
 	userID uint32,
 ) (string, error) {
-	ls.mx.Lock()
-	defer ls.mx.Unlock()
 	shortEndpoint := strconv.FormatInt(ls.lastID, 10)
 	shortURL := beginURL + shortEndpoint
-	data := strconv.FormatInt(int64(userID), 10) +
-		splitSeq + strconv.FormatInt(ls.lastID, 10) +
-		splitSeq + originalURL +
-		splitSeq + "false"
 
+	data := createRow(int64(userID), strconv.FormatInt(ls.lastID, 10), originalURL, "false")
+
+	ls.mx.Lock()
 	wr := bufio.NewWriter(ls.file)
 	if _, err := wr.WriteString(data + "\n"); err != nil {
 		return "", err
@@ -98,7 +96,8 @@ func (ls *LocalStorage) CreateShortURL(
 	if err := wr.Flush(); err != nil {
 		return "", err
 	}
-	ls.lastID++
+	ls.mx.Unlock()
+	atomic.AddInt64(&ls.lastID, 1)
 	return shortURL, nil
 }
 
@@ -108,16 +107,16 @@ func (ls *LocalStorage) CreateShortURLs(
 	urls []URLWithID,
 	userID uint32,
 ) ([]URLWithID, error) {
-	res := make([]URLWithID, 0, len(urls))
-	for _, url := range urls {
+	res := make([]URLWithID, len(urls))
+	for i, url := range urls {
 		shortURL, err := ls.CreateShortURL(ctx, beginURL, url.URL, userID)
 		if err != nil {
 			return nil, err
 		}
-		res = append(res, URLWithID{
+		res[i] = URLWithID{
 			CorrelationID: url.CorrelationID,
 			URL:           shortURL,
-		})
+		}
 	}
 	return res, nil
 }
@@ -136,12 +135,11 @@ func (ls *LocalStorage) GetFullURL(ctx context.Context, shortURL int64) (string,
 	for scanner.Scan() {
 		data := scanner.Text()
 		urlData := strings.Split(data, splitSeq)
-		if len(urlData) != 4 {
+		if len(urlData) != countDataInRow {
 			panic(errors.New("bad data in file"))
 		}
 		var elementShortURL int64
-		elementShortURL, err = strconv.ParseInt(urlData[1], 10, 64)
-		if err != nil {
+		if elementShortURL, err = strconv.ParseInt(urlData[1], 10, 64); err != nil {
 			return "", err
 		}
 		if elementShortURL == shortURL {
@@ -173,7 +171,7 @@ func (ls *LocalStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	for scanner.Scan() {
 		data := scanner.Text()
 		urlData := strings.Split(data, splitSeq)
-		if len(urlData) != 4 {
+		if len(urlData) != countDataInRow {
 			continue
 		}
 		storageUserID, err := strconv.ParseInt(urlData[0], 10, 64)
@@ -193,10 +191,7 @@ func (ls *LocalStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	fileForRead.Close()
 	wr := bufio.NewWriter(ls.file)
 	for _, url := range urlsForDeleteData {
-		data := strconv.FormatInt(int64(url.userID), 10) +
-			splitSeq + url.url +
-			splitSeq + url.fullURL +
-			splitSeq + "true"
+		data := createRow(int64(url.userID), url.url, url.fullURL, "true")
 		if _, err := wr.WriteString(data + "\n"); err != nil {
 			return err
 		}
@@ -223,7 +218,7 @@ func (ls *LocalStorage) GetAllURLs(ctx context.Context, beginURL string, userID 
 	for scanner.Scan() {
 		data := scanner.Text()
 		urlData := strings.Split(data, splitSeq)
-		if len(urlData) != 4 {
+		if len(urlData) != countDataInRow {
 			continue
 		}
 		storageUserID, err := strconv.ParseInt(urlData[0], 10, 64)
@@ -243,6 +238,13 @@ func (ls *LocalStorage) GetAllURLs(ctx context.Context, beginURL string, userID 
 		urls = append(urls, url)
 	}
 	return urls
+}
+
+func createRow(userID int64, shortURL string, fullURL string, isDeleted string) string {
+	return strconv.FormatInt(userID, 10) +
+		splitSeq + shortURL +
+		splitSeq + fullURL +
+		splitSeq + isDeleted
 }
 
 func (ls *LocalStorage) Close() error {
