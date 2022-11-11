@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"go-axesthump-shortener/internal/app/generator"
 	"strconv"
 	"sync"
 )
@@ -15,14 +16,14 @@ type StorageURL struct {
 
 type InMemoryStorage struct {
 	sync.RWMutex
-	userURLs map[int64]*StorageURL
-	lastID   int64
+	userURLs    map[int64]*StorageURL
+	idGenerator *generator.IDGenerator
 }
 
 func NewInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
-		userURLs: make(map[int64]*StorageURL),
-		lastID:   int64(0),
+		userURLs:    make(map[int64]*StorageURL),
+		idGenerator: generator.GetIDGenerator(0),
 	}
 }
 
@@ -32,15 +33,15 @@ func (s *InMemoryStorage) CreateShortURL(
 	originalURL string,
 	userID uint32,
 ) (string, error) {
-	s.Lock()
-	defer s.Unlock()
-	shortEndpoint := strconv.FormatInt(s.lastID, 10)
+	newShortURL := s.idGenerator.GetID()
+	shortEndpoint := strconv.FormatInt(newShortURL, 10)
 	shortURL := beginURL + shortEndpoint
-	s.userURLs[s.lastID] = &StorageURL{
+	s.Lock()
+	s.userURLs[newShortURL] = &StorageURL{
 		url:    originalURL,
 		userID: userID,
 	}
-	s.lastID++
+	s.Unlock()
 	return shortURL, nil
 }
 
@@ -112,5 +113,6 @@ func (s *InMemoryStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 }
 
 func (s *InMemoryStorage) Close() error {
+	s.idGenerator.Cancel()
 	return nil
 }

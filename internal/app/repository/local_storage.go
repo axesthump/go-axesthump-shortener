@@ -4,12 +4,12 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"go-axesthump-shortener/internal/app/generator"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 )
 
 const (
@@ -18,9 +18,9 @@ const (
 )
 
 type LocalStorage struct {
-	mx     *sync.RWMutex
-	file   *os.File
-	lastID int64
+	sync.RWMutex
+	file        *os.File
+	idGenerator *generator.IDGenerator
 }
 
 func NewLocalStorage(filename string) (*LocalStorage, error) {
@@ -30,9 +30,9 @@ func NewLocalStorage(filename string) (*LocalStorage, error) {
 	}
 	lastID := getLastID(file)
 	return &LocalStorage{
-		mx:     &sync.RWMutex{},
-		file:   file,
-		lastID: lastID,
+		RWMutex:     sync.RWMutex{},
+		file:        file,
+		idGenerator: generator.GetIDGenerator(lastID),
 	}, nil
 }
 
@@ -83,12 +83,13 @@ func (ls *LocalStorage) CreateShortURL(
 	originalURL string,
 	userID uint32,
 ) (string, error) {
-	shortEndpoint := strconv.FormatInt(ls.lastID, 10)
+	newShortID := ls.idGenerator.GetID()
+	shortEndpoint := strconv.FormatInt(newShortID, 10)
 	shortURL := beginURL + shortEndpoint
 
-	data := createRow(int64(userID), strconv.FormatInt(ls.lastID, 10), originalURL, "false")
+	data := createRow(int64(userID), strconv.FormatInt(newShortID, 10), originalURL, "false")
 
-	ls.mx.Lock()
+	ls.Lock()
 	wr := bufio.NewWriter(ls.file)
 	if _, err := wr.WriteString(data + "\n"); err != nil {
 		return "", err
@@ -96,8 +97,7 @@ func (ls *LocalStorage) CreateShortURL(
 	if err := wr.Flush(); err != nil {
 		return "", err
 	}
-	ls.mx.Unlock()
-	atomic.AddInt64(&ls.lastID, 1)
+	ls.Unlock()
 	return shortURL, nil
 }
 
@@ -122,8 +122,8 @@ func (ls *LocalStorage) CreateShortURLs(
 }
 
 func (ls *LocalStorage) GetFullURL(ctx context.Context, shortURL int64) (string, error) {
-	ls.mx.RLock()
-	defer ls.mx.RUnlock()
+	ls.RLock()
+	defer ls.RUnlock()
 	fileForRead, err := os.OpenFile(ls.file.Name(), os.O_RDONLY, 0777)
 	if err != nil {
 		return "", err
@@ -159,8 +159,8 @@ func (ls *LocalStorage) GetFullURL(ctx context.Context, shortURL int64) (string,
 }
 
 func (ls *LocalStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
-	ls.mx.Lock()
-	defer ls.mx.Unlock()
+	ls.Lock()
+	defer ls.Unlock()
 
 	fileForRead, err := os.OpenFile(ls.file.Name(), os.O_RDONLY, 0777)
 	if err != nil {
@@ -206,8 +206,8 @@ func (ls *LocalStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 }
 
 func (ls *LocalStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []URLInfo {
-	ls.mx.RLock()
-	defer ls.mx.RUnlock()
+	ls.RLock()
+	defer ls.RUnlock()
 	fileForRead, err := os.OpenFile(ls.file.Name(), os.O_RDONLY, 0777)
 	urls := make([]URLInfo, 0)
 	if err != nil {
