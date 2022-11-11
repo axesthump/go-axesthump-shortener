@@ -93,7 +93,7 @@ func (db *dbStorage) GetFullURL(ctx context.Context, shortURL int64) (string, er
 	if err != nil {
 		return "", err
 	}
-	if isDeleted == nil || *isDeleted {
+	if *isDeleted {
 		return "", &DeletedURLError{}
 	}
 	return *longURL, nil
@@ -171,11 +171,6 @@ func (db *dbStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	}
 	q := "UPDATE shortener SET is_deleted = true WHERE shortener_id = ANY ($1) AND user_id = $2;"
 	shortIDs := convertShortIDs(urlsForDelete)
-
-	if err != nil {
-		log.Printf("createQueryForDelete error - %s", err)
-		return nil
-	}
 
 	_, err = tx.Exec(db.ctx, q, shortIDs, urlsForDelete[0].UserID)
 	if err != nil {
