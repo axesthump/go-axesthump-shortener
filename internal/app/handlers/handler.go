@@ -200,9 +200,8 @@ func (a *AppHandler) listURLs(w http.ResponseWriter, r *http.Request) {
 
 func (a *AppHandler) deleteListURLs(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
-	body, err := io.ReadAll(r.Body)
+	body, err := readBody(w, r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	a.deleteService.AddURLs(string(body), userID)
