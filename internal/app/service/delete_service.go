@@ -4,6 +4,7 @@ import (
 	"go-axesthump-shortener/internal/app/repository"
 	"log"
 	"strings"
+	"time"
 )
 
 type DeleteService struct {
@@ -20,11 +21,7 @@ func NewDeleteService(repo repository.Repository, baseURL string) *DeleteService
 	}
 	for i := 0; i < 3; i++ {
 		go func(ds *DeleteService) {
-			for {
-				data, ok := <-ds.urlsForDelete
-				if !ok {
-					return
-				}
+			for data := range ds.urlsForDelete {
 				err := repo.DeleteURLs(data)
 				if err != nil {
 					log.Printf("Found err %s", err)
@@ -47,6 +44,7 @@ func (ds *DeleteService) AddURLs(data string, userID uint32) {
 }
 
 func (ds *DeleteService) reAddURLs(urls []repository.DeleteURL) {
+	time.Sleep(time.Millisecond * 100)
 	go func() {
 		ds.urlsForDelete <- urls
 	}()

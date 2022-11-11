@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"github.com/jackc/pgx/v5"
+	"github.com/lib/pq"
 	"log"
 	"strconv"
 )
@@ -93,7 +93,7 @@ func (db *dbStorage) GetFullURL(ctx context.Context, shortURL int64) (string, er
 	if err != nil {
 		return "", err
 	}
-	if *isDeleted {
+	if isDeleted == nil || *isDeleted {
 		return "", &DeletedURLError{}
 	}
 	return *longURL, nil
@@ -169,14 +169,15 @@ func (db *dbStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 		log.Printf("tx error - %s", err)
 		return err
 	}
-	q, err := createQueryForDelete(urlsForDelete)
+	q := "UPDATE shortener SET is_deleted = true WHERE shortener_id = ANY ($1) AND user_id = $2;"
+	shortIDs := convertShortIDs(urlsForDelete)
 
 	if err != nil {
 		log.Printf("createQueryForDelete error - %s", err)
 		return nil
 	}
 
-	_, err = tx.Exec(db.ctx, q, urlsForDelete[0].UserID)
+	_, err = tx.Exec(db.ctx, q, shortIDs, urlsForDelete[0].UserID)
 	if err != nil {
 		log.Printf("Exec error - %s", err)
 		e := tx.Rollback(db.ctx)
@@ -189,20 +190,16 @@ func (db *dbStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	return err
 }
 
-func createQueryForDelete(urlsForDelete []DeleteURL) (string, error) {
-	buff := bytes.Buffer{}
-	_, err := buff.WriteString("UPDATE shortener SET is_deleted = true WHERE shortener_id in (")
-	if err != nil {
-		return "", err
-	}
-	sep := ""
+func convertShortIDs(urlsForDelete []DeleteURL) pq.Int64Array {
+	shortIDs := pq.Int64Array{}
 	for _, url := range urlsForDelete {
-		buff.WriteString(sep)
-		buff.WriteString(url.URL)
-		sep = ","
+		shortID, err := strconv.ParseInt(url.URL, 10, 64)
+		if err != nil {
+			continue
+		}
+		shortIDs = append(shortIDs, shortID)
 	}
-	buff.WriteString(") AND user_id = $1;")
-	return buff.String(), nil
+	return shortIDs
 }
 
 func (db *dbStorage) Close() error {
