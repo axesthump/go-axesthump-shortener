@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/jackc/pgx/v5"
+	"github.com/lib/pq"
 	"log"
 	"strconv"
 )
@@ -84,12 +85,16 @@ func (db *dbStorage) GetShortURLByFullURL(ctx context.Context, fullURL string) (
 }
 
 func (db *dbStorage) GetFullURL(ctx context.Context, shortURL int64) (string, error) {
-	query := "SELECT long_url FROM shortener WHERE shortener_id = $1"
+	query := "SELECT long_url, is_deleted FROM shortener WHERE shortener_id = $1"
 	row := db.conn.QueryRow(ctx, query, shortURL)
 	var longURL = new(string)
-	err := row.Scan(longURL)
+	var isDeleted = new(bool)
+	err := row.Scan(longURL, isDeleted)
 	if err != nil {
 		return "", err
+	}
+	if *isDeleted {
+		return "", &DeletedURLError{}
 	}
 	return *longURL, nil
 }
@@ -156,6 +161,40 @@ func (db *dbStorage) CreateShortURLs(
 		return nil, err
 	}
 	return res, nil
+}
+
+func (db *dbStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
+	tx, err := db.conn.Begin(db.ctx)
+	if err != nil {
+		log.Printf("tx error - %s", err)
+		return err
+	}
+	q := "UPDATE shortener SET is_deleted = true WHERE shortener_id = ANY ($1) AND user_id = $2;"
+	shortIDs := convertShortIDs(urlsForDelete)
+
+	_, err = tx.Exec(db.ctx, q, shortIDs, urlsForDelete[0].UserID)
+	if err != nil {
+		log.Printf("Exec error - %s", err)
+		e := tx.Rollback(db.ctx)
+		if e != nil {
+			return e
+		}
+		return nil
+	}
+	err = tx.Commit(db.ctx)
+	return err
+}
+
+func convertShortIDs(urlsForDelete []DeleteURL) pq.Int64Array {
+	shortIDs := pq.Int64Array{}
+	for _, url := range urlsForDelete {
+		shortID, err := strconv.ParseInt(url.URL, 10, 64)
+		if err != nil {
+			continue
+		}
+		shortIDs = append(shortIDs, shortID)
+	}
+	return shortIDs
 }
 
 func (db *dbStorage) Close() error {

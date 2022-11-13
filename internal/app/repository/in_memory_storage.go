@@ -8,19 +8,20 @@ import (
 )
 
 type StorageURL struct {
-	url    string
-	userID uint32
+	url       string
+	userID    uint32
+	isDeleted bool
 }
 
 type InMemoryStorage struct {
 	sync.RWMutex
-	userURLs map[int64]StorageURL
+	userURLs map[int64]*StorageURL
 	lastID   int64
 }
 
 func NewInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
-		userURLs: make(map[int64]StorageURL),
+		userURLs: make(map[int64]*StorageURL),
 		lastID:   int64(0),
 	}
 }
@@ -35,7 +36,7 @@ func (s *InMemoryStorage) CreateShortURL(
 	defer s.Unlock()
 	shortEndpoint := strconv.FormatInt(s.lastID, 10)
 	shortURL := beginURL + shortEndpoint
-	s.userURLs[s.lastID] = StorageURL{
+	s.userURLs[s.lastID] = &StorageURL{
 		url:    originalURL,
 		userID: userID,
 	}
@@ -47,9 +48,12 @@ func (s *InMemoryStorage) GetFullURL(ctx context.Context, shortURL int64) (strin
 	s.RLock()
 	defer s.RUnlock()
 	if url, ok := s.userURLs[shortURL]; ok {
+		if url.isDeleted {
+			return "", &DeletedURLError{}
+		}
 		return url.url, nil
 	}
-	return "", fmt.Errorf("url dont exist")
+	return "", fmt.Errorf("URL dont exist")
 }
 
 func (s *InMemoryStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []URLInfo {
@@ -88,6 +92,23 @@ func (s *InMemoryStorage) CreateShortURLs(
 		})
 	}
 	return res, nil
+}
+
+func (s *InMemoryStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
+	s.Lock()
+	for _, urlForDelete := range urlsForDelete {
+		shortURL, err := strconv.ParseInt(urlForDelete.URL, 10, 64)
+		if err != nil {
+			return err
+		}
+		if savedURL, ok := s.userURLs[shortURL]; ok {
+			if savedURL.userID == urlForDelete.UserID {
+				savedURL.isDeleted = true
+			}
+		}
+	}
+	s.Unlock()
+	return nil
 }
 
 func (s *InMemoryStorage) Close() error {

@@ -39,7 +39,7 @@ func getLastID(file *os.File) int64 {
 	for scanner.Scan() {
 		data := string(scanner.Bytes())
 		urlData := strings.Split(data, splitSeq)
-		if len(urlData) != 3 {
+		if len(urlData) != 4 {
 			panic(errors.New("bad data in file"))
 		}
 		lastID, err = strconv.ParseInt(urlData[1], 10, 64)
@@ -62,7 +62,7 @@ func (ls *LocalStorage) GetUserLastID() uint32 {
 	for scanner.Scan() {
 		data := string(scanner.Bytes())
 		urlData := strings.Split(data, splitSeq)
-		if len(urlData) != 3 {
+		if len(urlData) != 4 {
 			panic(errors.New("bad data in file"))
 		}
 		lastID, err = strconv.ParseInt(urlData[0], 10, 64)
@@ -86,7 +86,10 @@ func (ls *LocalStorage) CreateShortURL(
 	defer ls.mx.Unlock()
 	shortEndpoint := strconv.FormatInt(ls.lastID, 10)
 	shortURL := beginURL + shortEndpoint
-	data := strconv.FormatInt(int64(userID), 10) + splitSeq + strconv.FormatInt(ls.lastID, 10) + splitSeq + originalURL
+	data := strconv.FormatInt(int64(userID), 10) +
+		splitSeq + strconv.FormatInt(ls.lastID, 10) +
+		splitSeq + originalURL +
+		splitSeq + "false"
 
 	wr := bufio.NewWriter(ls.file)
 	if _, err := wr.WriteString(data + "\n"); err != nil {
@@ -128,21 +131,83 @@ func (ls *LocalStorage) GetFullURL(ctx context.Context, shortURL int64) (string,
 	}
 	defer fileForRead.Close()
 	scanner := bufio.NewScanner(fileForRead)
+	var fullURL string
+	var finalErr error
 	for scanner.Scan() {
 		data := scanner.Text()
 		urlData := strings.Split(data, splitSeq)
-		if len(urlData) != 3 {
+		if len(urlData) != 4 {
 			panic(errors.New("bad data in file"))
 		}
-		elementShortURL, err := strconv.ParseInt(urlData[1], 10, 64)
+		var elementShortURL int64
+		elementShortURL, err = strconv.ParseInt(urlData[1], 10, 64)
 		if err != nil {
 			return "", err
 		}
 		if elementShortURL == shortURL {
-			return urlData[2], nil
+			if urlData[3] == "true" {
+				finalErr = &DeletedURLError{}
+			} else {
+				finalErr = nil
+				fullURL = urlData[2]
+			}
 		}
 	}
-	return "", errors.New("url nor found")
+	if len(fullURL) == 0 {
+		return "", errors.New("URL nor found")
+	} else {
+		return fullURL, finalErr
+	}
+}
+
+func (ls *LocalStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
+	ls.mx.Lock()
+	defer ls.mx.Unlock()
+
+	fileForRead, err := os.OpenFile(ls.file.Name(), os.O_RDONLY, 0777)
+	if err != nil {
+		return err
+	}
+	scanner := bufio.NewScanner(fileForRead)
+	urlsForDeleteData := make([]url, 0, len(urlsForDelete))
+	for scanner.Scan() {
+		data := scanner.Text()
+		urlData := strings.Split(data, splitSeq)
+		if len(urlData) != 4 {
+			continue
+		}
+		storageUserID, err := strconv.ParseInt(urlData[0], 10, 64)
+		if err != nil || uint32(storageUserID) != urlsForDelete[0].UserID {
+			continue
+		}
+		shortURL := urlData[1]
+		url := url{
+			userID:    urlsForDelete[0].UserID,
+			url:       shortURL,
+			fullURL:   urlData[2],
+			isDeleted: true,
+		}
+		urlsForDeleteData = append(urlsForDeleteData, url)
+	}
+
+	fileForRead.Close()
+	wr := bufio.NewWriter(ls.file)
+	for _, url := range urlsForDeleteData {
+		data := strconv.FormatInt(int64(url.userID), 10) +
+			splitSeq + url.url +
+			splitSeq + url.fullURL +
+			splitSeq + "true"
+		if _, err := wr.WriteString(data + "\n"); err != nil {
+			return err
+		}
+		if err := wr.Flush(); err != nil {
+			return err
+		}
+	}
+	if err := wr.Flush(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (ls *LocalStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []URLInfo {
@@ -158,7 +223,7 @@ func (ls *LocalStorage) GetAllURLs(ctx context.Context, beginURL string, userID 
 	for scanner.Scan() {
 		data := scanner.Text()
 		urlData := strings.Split(data, splitSeq)
-		if len(urlData) != 3 {
+		if len(urlData) != 4 {
 			continue
 		}
 		storageUserID, err := strconv.ParseInt(urlData[0], 10, 64)

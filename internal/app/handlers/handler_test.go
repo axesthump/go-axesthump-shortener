@@ -26,6 +26,10 @@ type mockStorage struct {
 	needError bool
 }
 
+func (m *mockStorage) DeleteURLs(urlsForDelete []repository.DeleteURL) error {
+	return nil
+}
+
 func (m *mockStorage) CreateShortURL(ctx context.Context, beginURL string, originalURL string, userID uint32) (string, error) {
 	return shortURL, nil
 }

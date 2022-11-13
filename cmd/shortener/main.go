@@ -23,6 +23,7 @@ func handleShutdown(signalHandler chan os.Signal, done chan bool, conf *config.A
 			panic(err)
 		}
 	}
+	conf.DeleteService.Close()
 	done <- true
 }
 
@@ -37,6 +38,7 @@ func main() {
 	appHandler := handlers.NewAppHandler(conf)
 	go handleShutdown(signalHandler, done, conf)
 	go func() {
+		log.Printf("Start listen server at %s\n", conf.ServerAddr)
 		log.Fatal(http.ListenAndServe(conf.ServerAddr, appHandler.Router))
 	}()
 	<-done
