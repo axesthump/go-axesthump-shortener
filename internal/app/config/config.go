@@ -27,7 +27,6 @@ type AppConfig struct {
 
 func CreateAppConfig() (*AppConfig, error) {
 	appConfig := getConsoleArgs()
-	setParametersFromEnv(appConfig)
 	setDBConn(appConfig)
 	if err := setStorage(appConfig); err != nil {
 		return nil, err
@@ -86,26 +85,27 @@ func setStorage(config *AppConfig) error {
 	return nil
 }
 
-func setParametersFromEnv(config *AppConfig) {
-	if config.BaseURL == "" {
-		config.BaseURL = util.GetEnvOrDefault("BASE_URL", "http://localhost:8080")
-	}
-	if config.ServerAddr == "" {
-		config.ServerAddr = util.GetEnvOrDefault("SERVER_ADDRESS", "localhost:8080")
-	}
-	if config.storagePath == "" {
-		config.storagePath = os.Getenv("FILE_STORAGE_PATH")
-	}
-	if config.dbConnURL == "" {
-		config.dbConnURL = os.Getenv("DATABASE_DSN")
-	}
-}
-
 func getConsoleArgs() *AppConfig {
-	serverAddr := flag.String("a", "", "server address")
-	baseURL := flag.String("b", "", "base url")
-	storagePath := flag.String("f", "", "storage path")
-	dbConnect := flag.String("d", "", "db conn")
+	serverAddr := flag.String(
+		"a",
+		util.GetEnvOrDefault("SERVER_ADDRESS", "localhost:8080"),
+		"server address",
+	)
+	baseURL := flag.String(
+		"b",
+		util.GetEnvOrDefault("BASE_URL", "http://localhost:8080"),
+		"base url",
+	)
+	storagePath := flag.String(
+		"f",
+		os.Getenv("FILE_STORAGE_PATH"),
+		"storage path",
+	)
+	dbConnect := flag.String(
+		"d",
+		os.Getenv("DATABASE_DSN"),
+		"db conn",
+	)
 	flag.Parse()
 
 	return &AppConfig{

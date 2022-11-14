@@ -77,7 +77,7 @@ func (a *authService) validateCookie(cookie *http.Cookie) (bool, uint32) {
 	if !hmac.Equal(hash, data[4:]) {
 		return false, 0
 	}
-	if !a.idGenerator.IsCreatedUser(userID) {
+	if !a.idGenerator.IsCreatedID(userID) {
 		return false, 0
 	}
 	return true, userID

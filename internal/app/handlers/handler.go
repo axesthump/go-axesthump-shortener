@@ -223,6 +223,8 @@ func (a *AppHandler) ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *AppHandler) addListURLRest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	body, err := readBody(w, r.Body)
 	if err != nil {
 		return
@@ -234,12 +236,12 @@ func (a *AppHandler) addListURLRest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	convertedURLs := make([]repository.URLWithID, 0, len(urlsForShort))
-	for _, url := range urlsForShort {
-		convertedURLs = append(convertedURLs, repository.URLWithID{
+	convertedURLs := make([]repository.URLWithID, len(urlsForShort))
+	for i, url := range urlsForShort {
+		convertedURLs[i] = repository.URLWithID{
 			CorrelationID: url.CorrelationID,
 			URL:           url.OriginalURL,
-		})
+		}
 	}
 
 	shortenURLs, err := a.repo.CreateShortURLs(r.Context(), a.baseURL, convertedURLs, userID)
@@ -248,12 +250,12 @@ func (a *AppHandler) addListURLRest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortenURLsResponse := make([]addListURLsResponse, 0, len(shortenURLs))
-	for _, shortenURL := range shortenURLs {
-		shortenURLsResponse = append(shortenURLsResponse, addListURLsResponse{
+	shortenURLsResponse := make([]addListURLsResponse, len(shortenURLs))
+	for i, shortenURL := range shortenURLs {
+		shortenURLsResponse[i] = addListURLsResponse{
 			CorrelationID: shortenURL.CorrelationID,
 			ShortURL:      shortenURL.URL,
-		})
+		}
 	}
 
 	resBody, err := json.Marshal(&shortenURLsResponse)
@@ -261,14 +263,7 @@ func (a *AppHandler) addListURLRest(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write(resBody)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	sendResponse(w, resBody, http.StatusCreated)
 }
 
 func sendResponse(w http.ResponseWriter, res []byte, status int) {

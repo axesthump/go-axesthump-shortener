@@ -21,11 +21,11 @@ func NewDeleteService(repo repository.Repository, baseURL string) *DeleteService
 	}
 	for i := 0; i < 3; i++ {
 		go func(ds *DeleteService) {
-			for data := range ds.urlsForDelete {
-				err := repo.DeleteURLs(data)
+			for urlsForDelete := range ds.urlsForDelete {
+				err := ds.repo.DeleteURLs(urlsForDelete)
 				if err != nil {
 					log.Printf("Found err %s", err)
-					ds.reAddURLs(data)
+					ds.reAddURLs(urlsForDelete)
 				} else {
 					log.Printf("Delete success!")
 				}
@@ -56,12 +56,13 @@ func (ds *DeleteService) Close() {
 
 func getURLsFromArr(data string, userID uint32, baseURL string) []repository.DeleteURL {
 	data = data[1 : len(data)-1]
-	data = strings.ReplaceAll(data, "\"", "")
 	splitData := strings.Split(data, ",")
+	baseURL = baseURL + "/"
 	urls := make([]repository.DeleteURL, len(splitData))
 	for i, url := range splitData {
+		url = url[1 : len(url)-1]
 		url = strings.TrimSpace(url)
-		url = strings.TrimPrefix(url, baseURL+"/")
+		url = strings.TrimPrefix(url, baseURL)
 		urls[i] = repository.DeleteURL{URL: url, UserID: userID}
 	}
 	return urls
