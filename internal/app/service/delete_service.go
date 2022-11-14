@@ -60,8 +60,8 @@ func getURLsFromArr(data string, userID uint32, baseURL string) []repository.Del
 	baseURL = baseURL + "/"
 	urls := make([]repository.DeleteURL, len(splitData))
 	for i, url := range splitData {
-		url = url[1 : len(url)-1]
 		url = strings.TrimSpace(url)
+		url = url[1 : len(url)-1]
 		url = strings.TrimPrefix(url, baseURL)
 		urls[i] = repository.DeleteURL{URL: url, UserID: userID}
 	}
