@@ -42,7 +42,3 @@ func (g *IDGenerator) start() {
 func (g *IDGenerator) Cancel() {
 	g.cancel()
 }
-
-func (g *IDGenerator) IsCreatedID(id uint32) bool {
-	return int64(id) < g.id
-}
