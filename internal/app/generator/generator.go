@@ -33,12 +33,17 @@ func (g *IDGenerator) start() {
 		case <-g.ctx.Done():
 			return
 		default:
-			g.idCh <- g.id
+			id := g.id
 			g.id++
+			g.idCh <- id
 		}
 	}
 }
 
 func (g *IDGenerator) Cancel() {
 	g.cancel()
+}
+
+func (g *IDGenerator) IsCreatedID(id uint32) bool {
+	return int64(id) < g.id
 }

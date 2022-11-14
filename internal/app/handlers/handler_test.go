@@ -485,3 +485,19 @@ func BenchmarkAppHandler_getURL(b *testing.B) {
 		}
 	})
 }
+
+func TestAppHandler_ping(t *testing.T) {
+	a := &AppHandler{
+		dbConn:          nil,
+		repo:            &mockStorage{},
+		userIDGenerator: generator.NewIDGenerator(0),
+	}
+	r, _ := http.NewRequest(
+		http.MethodGet,
+		"/ping",
+		nil,
+	)
+	w := httptest.NewRecorder()
+	handler := http.HandlerFunc(a.ping)
+	handler.ServeHTTP(w, r)
+}
