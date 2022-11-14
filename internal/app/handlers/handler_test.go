@@ -8,10 +8,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go-axesthump-shortener/internal/app/generator"
 	myMiddleware "go-axesthump-shortener/internal/app/middleware"
 	"go-axesthump-shortener/internal/app/mocks"
 	"go-axesthump-shortener/internal/app/repository"
-	"go-axesthump-shortener/internal/app/user"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -146,7 +146,7 @@ func TestAppHandler_getURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
 				repo:            tt.fields.storage,
-				userIDGenerator: user.NewUserIDGenerator(0),
+				userIDGenerator: generator.NewIDGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)
@@ -234,7 +234,7 @@ func TestAppHandler_addURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
 				repo:            tt.fields.storage,
-				userIDGenerator: user.NewUserIDGenerator(0),
+				userIDGenerator: generator.NewIDGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)
@@ -339,7 +339,7 @@ func TestAppHandler_addURLRest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
 				repo:            tt.fields.storage,
-				userIDGenerator: user.NewUserIDGenerator(0),
+				userIDGenerator: generator.NewIDGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)
@@ -397,7 +397,7 @@ func TestAppHandler_listURLs(t *testing.T) {
 			defer ctrl.Finish()
 			a := &AppHandler{
 				repo:            repo,
-				userIDGenerator: user.NewUserIDGenerator(0),
+				userIDGenerator: generator.NewIDGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)
@@ -434,7 +434,7 @@ func BenchmarkAppHandler_addURLRest(b *testing.B) {
 	b.Run("Endpoint api/shorten", func(b *testing.B) {
 		a := &AppHandler{
 			repo:            &mockStorage{},
-			userIDGenerator: user.NewUserIDGenerator(0),
+			userIDGenerator: generator.NewIDGenerator(0),
 		}
 		r, _ := http.NewRequestWithContext(
 			context.WithValue(context.TODO(), myMiddleware.UserIDKey, uint32(1)),
@@ -461,7 +461,7 @@ func BenchmarkAppHandler_getURL(b *testing.B) {
 		defer ctrl.Finish()
 		a := &AppHandler{
 			repo:            repo,
-			userIDGenerator: user.NewUserIDGenerator(0),
+			userIDGenerator: generator.NewIDGenerator(0),
 		}
 		r, _ := http.NewRequest(
 			http.MethodGet,

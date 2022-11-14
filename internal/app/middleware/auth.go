@@ -6,7 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
-	"go-axesthump-shortener/internal/app/user"
+	"go-axesthump-shortener/internal/app/generator"
 	"log"
 	"net/http"
 )
@@ -16,11 +16,11 @@ type userKeyID string
 const UserIDKey userKeyID = "id"
 
 type authService struct {
-	idGenerator *user.IDGenerator
+	idGenerator *generator.IDGenerator
 	secretKey   []byte
 }
 
-func NewAuthService(generator *user.IDGenerator) *authService {
+func NewAuthService(generator *generator.IDGenerator) *authService {
 	as := &authService{
 		idGenerator: generator,
 		secretKey:   []byte("secret_key"),
@@ -46,10 +46,10 @@ func (a *authService) Auth(next http.Handler) http.Handler {
 }
 
 func (a *authService) GenerateCookie(w http.ResponseWriter) uint32 {
-	newUserID := a.idGenerator.GetNewUserID()
+	newUserID := a.idGenerator.GetID()
 	log.Printf("Generate new user id - %d\n", newUserID)
 	newUserIDBytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(newUserIDBytes, newUserID)
+	binary.BigEndian.PutUint32(newUserIDBytes, uint32(newUserID))
 
 	h := hmac.New(sha256.New, a.secretKey)
 	h.Write(newUserIDBytes)
@@ -61,7 +61,7 @@ func (a *authService) GenerateCookie(w http.ResponseWriter) uint32 {
 		Value: token,
 	}
 	http.SetCookie(w, newCookie)
-	return newUserID
+	return uint32(newUserID)
 }
 
 func (a *authService) validateCookie(cookie *http.Cookie) (bool, uint32) {

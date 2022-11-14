@@ -4,9 +4,9 @@ import (
 	"context"
 	"flag"
 	"github.com/jackc/pgx/v5"
+	"go-axesthump-shortener/internal/app/generator"
 	"go-axesthump-shortener/internal/app/repository"
 	"go-axesthump-shortener/internal/app/service"
-	"go-axesthump-shortener/internal/app/user"
 	"go-axesthump-shortener/internal/app/util"
 	"log"
 	"os"
@@ -18,7 +18,7 @@ type AppConfig struct {
 	Repo            repository.Repository
 	DBContext       context.Context
 	Conn            *pgx.Conn
-	UserIDGenerator *user.IDGenerator
+	UserIDGenerator *generator.IDGenerator
 	DeleteService   *service.DeleteService
 
 	storagePath string
@@ -82,7 +82,7 @@ func setStorage(config *AppConfig) error {
 		lastUserID = localStorage.GetUserLastID()
 
 	}
-	config.UserIDGenerator = user.NewUserIDGenerator(lastUserID)
+	config.UserIDGenerator = generator.NewIDGenerator(int64(lastUserID))
 	return nil
 }
 

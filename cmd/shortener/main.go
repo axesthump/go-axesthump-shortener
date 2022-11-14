@@ -24,6 +24,7 @@ func handleShutdown(signalHandler chan os.Signal, done chan bool, conf *config.A
 		}
 	}
 	conf.DeleteService.Close()
+	conf.UserIDGenerator.Cancel()
 	done <- true
 }
 

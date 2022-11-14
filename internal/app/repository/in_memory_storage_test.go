@@ -403,9 +403,97 @@ func TestInMemoryStorage_GetAllURLs(t *testing.T) {
 	}
 }
 
+func TestInMemoryStorage_CreateShortURLs(t *testing.T) {
+	type fields struct {
+		userURLs    map[int64]*StorageURL
+		idGenerator *generator.IDGenerator
+	}
+	type args struct {
+		ctx      context.Context
+		beginURL string
+		urls     []URLWithID
+		userID   uint32
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []URLWithID
+		wantErr bool
+	}{
+		{
+			name: "Test success add URLs",
+			fields: fields{
+				userURLs:    map[int64]*StorageURL{},
+				idGenerator: generator.NewIDGenerator(0),
+			},
+			args: args{
+				ctx:      context.TODO(),
+				beginURL: "http://localhost:8080/",
+				urls: []URLWithID{
+					{
+						CorrelationID: "0",
+						URL:           "fullURL0",
+					},
+					{
+						CorrelationID: "1",
+						URL:           "fullURL1",
+					},
+					{
+						CorrelationID: "2",
+						URL:           "fullURL2",
+					},
+				},
+				userID: 0,
+			},
+			want: []URLWithID{
+				{
+					CorrelationID: "0",
+					URL:           "http://localhost:8080/0",
+				},
+				{
+					CorrelationID: "1",
+					URL:           "http://localhost:8080/1",
+				},
+				{
+					CorrelationID: "2",
+					URL:           "http://localhost:8080/2",
+				},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &InMemoryStorage{
+				userURLs:    tt.fields.userURLs,
+				idGenerator: tt.fields.idGenerator,
+			}
+			got, err := s.CreateShortURLs(tt.args.ctx, tt.args.beginURL, tt.args.urls, tt.args.userID)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			for _, url := range got {
+				assert.True(t, containsURLWithID(tt.want, url))
+			}
+		})
+	}
+}
+
 func contains(urls []URLInfo, url URLInfo) bool {
 	for _, tURL := range urls {
 		if tURL.OriginalURL == url.OriginalURL && tURL.ShortURL == url.ShortURL {
+			return true
+		}
+	}
+	return false
+}
+
+func containsURLWithID(urls []URLWithID, url URLWithID) bool {
+	for _, tURL := range urls {
+		if tURL.CorrelationID == url.CorrelationID && tURL.URL == url.URL {
 			return true
 		}
 	}

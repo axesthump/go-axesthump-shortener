@@ -9,10 +9,10 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5"
 	"go-axesthump-shortener/internal/app/config"
+	"go-axesthump-shortener/internal/app/generator"
 	myMiddleware "go-axesthump-shortener/internal/app/middleware"
 	"go-axesthump-shortener/internal/app/repository"
 	"go-axesthump-shortener/internal/app/service"
-	"go-axesthump-shortener/internal/app/user"
 	"io"
 	"log"
 	"net/http"
@@ -22,7 +22,7 @@ import (
 
 type AppHandler struct {
 	repo            repository.Repository
-	userIDGenerator *user.IDGenerator
+	userIDGenerator *generator.IDGenerator
 	baseURL         string
 	dbConn          *pgx.Conn
 	deleteService   *service.DeleteService
