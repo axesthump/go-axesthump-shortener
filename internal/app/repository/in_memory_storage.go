@@ -23,7 +23,7 @@ type InMemoryStorage struct {
 func NewInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
 		userURLs:    make(map[int64]*StorageURL),
-		idGenerator: generator.GetIDGenerator(0),
+		idGenerator: generator.NewIDGenerator(0),
 	}
 }
 

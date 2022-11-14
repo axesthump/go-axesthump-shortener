@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	myMiddleware "go-axesthump-shortener/internal/app/middleware"
 	"go-axesthump-shortener/internal/app/mocks"
 	"go-axesthump-shortener/internal/app/repository"
 	"go-axesthump-shortener/internal/app/user"
@@ -426,4 +428,60 @@ func TestAppHandler_listURLs(t *testing.T) {
 			assert.Equal(t, tt.want.urls, strings.TrimRight(string(body), "\n"))
 		})
 	}
+}
+
+func BenchmarkAppHandler_addURLRest(b *testing.B) {
+	b.Run("Endpoint api/shorten", func(b *testing.B) {
+		a := &AppHandler{
+			repo:            &mockStorage{},
+			userIDGenerator: user.NewUserIDGenerator(0),
+		}
+		r, _ := http.NewRequestWithContext(
+			context.WithValue(context.TODO(), myMiddleware.UserIDKey, uint32(1)),
+			http.MethodPost,
+			"api/shorten",
+			bytes.NewBuffer([]byte(`{"url":"1"}`)),
+		)
+		w := httptest.NewRecorder()
+		handler := http.HandlerFunc(a.addURLRest)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			handler.ServeHTTP(w, r)
+		}
+	})
+}
+
+func BenchmarkAppHandler_getURL(b *testing.B) {
+	b.Run("Endpoint /1", func(b *testing.B) {
+		ctrl := gomock.NewController(b)
+		repo := mocks.NewMockRepository(ctrl)
+		defer ctrl.Finish()
+		a := &AppHandler{
+			repo:            repo,
+			userIDGenerator: user.NewUserIDGenerator(0),
+		}
+		r, _ := http.NewRequest(
+			http.MethodGet,
+			"/{shortURL}",
+			nil,
+		)
+
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("shortURL", "1")
+		r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+		w := httptest.NewRecorder()
+		handler := http.HandlerFunc(a.getURL)
+
+		repo.EXPECT().GetFullURL(gomock.Any(), int64(1)).Return("fullURL", nil).AnyTimes()
+
+		b.ReportAllocs()
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			handler.ServeHTTP(w, r)
+		}
+	})
 }

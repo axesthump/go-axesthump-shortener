@@ -2,7 +2,6 @@ package generator
 
 import (
 	"context"
-	"sync"
 )
 
 type IDGenerator struct {
@@ -12,20 +11,15 @@ type IDGenerator struct {
 	cancel context.CancelFunc
 }
 
-var idGenerator *IDGenerator
-var sy sync.Once
-
-func GetIDGenerator(startID int64) *IDGenerator {
-	sy.Do(func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		idGenerator = &IDGenerator{
-			id:     startID,
-			idCh:   make(chan int64),
-			ctx:    ctx,
-			cancel: cancel,
-		}
-		go idGenerator.start()
-	})
+func NewIDGenerator(startID int64) *IDGenerator {
+	ctx, cancel := context.WithCancel(context.Background())
+	idGenerator := &IDGenerator{
+		id:     startID,
+		idCh:   make(chan int64),
+		ctx:    ctx,
+		cancel: cancel,
+	}
+	go idGenerator.start()
 	return idGenerator
 }
 

@@ -32,7 +32,7 @@ func NewLocalStorage(filename string) (*LocalStorage, error) {
 	return &LocalStorage{
 		RWMutex:     sync.RWMutex{},
 		file:        file,
-		idGenerator: generator.GetIDGenerator(lastID),
+		idGenerator: generator.NewIDGenerator(lastID),
 	}, nil
 }
 

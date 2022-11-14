@@ -31,7 +31,7 @@ func NewDBStorage(ctx context.Context, conn *pgx.Conn) *dbStorage {
 
 func (db *dbStorage) GetLastUserID() int64 {
 	query := "SELECT MAX(user_id) FROM shortener;"
-	row := db.conn.QueryRow(context.Background(), query)
+	row := db.conn.QueryRow(db.ctx, query)
 	lastID := 0
 	err := row.Scan(&lastID)
 	if err != nil {
