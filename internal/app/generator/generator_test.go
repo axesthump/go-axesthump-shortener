@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -29,9 +28,8 @@ func TestIDGenerator_IsCreatedID(t *testing.T) {
 	g := NewIDGenerator(0)
 	defer g.Cancel()
 
-	id := g.GetID()
-	id2 := g.GetID()
-	fmt.Println(id, id2)
+	g.GetID()
+	g.GetID()
 	assert.True(t, g.IsCreatedID(0))
 	assert.True(t, g.IsCreatedID(1))
 	assert.False(t, g.IsCreatedID(2))
