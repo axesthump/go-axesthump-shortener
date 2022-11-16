@@ -263,7 +263,6 @@ func (a *AppHandler) addListURLRest(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	log.Fatal(err)
 	sendResponse(w, resBody, http.StatusCreated)
 }
 
