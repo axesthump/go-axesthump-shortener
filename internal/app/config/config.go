@@ -67,11 +67,7 @@ func setStorage(config *AppConfig) error {
 		db := repository.NewDBStorage(config.DBContext, config.Conn)
 		config.Repo = db
 		lastUserID = uint32(db.GetLastUserID())
-	case len(config.storagePath) == 0:
-		log.Printf("Use inMemory repository!")
-		config.Repo = repository.NewInMemoryStorage()
-		lastUserID = 0
-	default:
+	case len(config.storagePath) != 0:
 		log.Printf("Use localStorage repository!")
 		localStorage, err := repository.NewLocalStorage(config.storagePath)
 		if err != nil {
@@ -79,7 +75,10 @@ func setStorage(config *AppConfig) error {
 		}
 		config.Repo = localStorage
 		lastUserID = localStorage.GetUserLastID()
-
+	default:
+		log.Printf("Use inMemory repository!")
+		config.Repo = repository.NewInMemoryStorage()
+		lastUserID = 0
 	}
 	config.UserIDGenerator = generator.NewIDGenerator(int64(lastUserID))
 	return nil

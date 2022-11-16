@@ -54,6 +54,7 @@ func NewRouter(appHandler *AppHandler) chi.Router {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
+	r.Mount("/debug", middleware.Profiler())
 	r.Get("/ping", appHandler.ping)
 	r.Get("/{shortURL}", appHandler.getURL)
 	r.Post("/", appHandler.addURL)
@@ -90,7 +91,6 @@ func (a *AppHandler) addURLRest(w http.ResponseWriter, r *http.Request) {
 	var body []byte
 	var err error
 	if body, err = readBody(w, r.Body); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -263,6 +263,7 @@ func (a *AppHandler) addListURLRest(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	log.Fatal(err)
 	sendResponse(w, resBody, http.StatusCreated)
 }
 
