@@ -27,6 +27,14 @@ func (g *IDGenerator) GetID() int64 {
 	return <-g.idCh
 }
 
+func (g *IDGenerator) Cancel() {
+	g.cancel()
+}
+
+func (g *IDGenerator) IsCreatedID(id uint32) bool {
+	return int64(id) < g.id
+}
+
 func (g *IDGenerator) start() {
 	for {
 		select {
@@ -38,12 +46,4 @@ func (g *IDGenerator) start() {
 			g.idCh <- id
 		}
 	}
-}
-
-func (g *IDGenerator) Cancel() {
-	g.cancel()
-}
-
-func (g *IDGenerator) IsCreatedID(id uint32) bool {
-	return int64(id) < g.id
 }

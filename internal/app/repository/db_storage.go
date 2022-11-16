@@ -185,6 +185,10 @@ func (db *dbStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	return err
 }
 
+func (db *dbStorage) Close() error {
+	return db.conn.Close(db.ctx)
+}
+
 func convertShortIDs(urlsForDelete []DeleteURL) pq.Int64Array {
 	shortIDs := pq.Int64Array{}
 	for _, url := range urlsForDelete {
@@ -195,8 +199,4 @@ func convertShortIDs(urlsForDelete []DeleteURL) pq.Int64Array {
 		shortIDs = append(shortIDs, shortID)
 	}
 	return shortIDs
-}
-
-func (db *dbStorage) Close() error {
-	return db.conn.Close(db.ctx)
 }

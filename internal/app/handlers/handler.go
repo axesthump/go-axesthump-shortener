@@ -47,6 +47,18 @@ type addListURLsResponse struct {
 	ShortURL      string `json:"short_url"`
 }
 
+func NewAppHandler(config *config.AppConfig) *AppHandler {
+	h := &AppHandler{
+		repo:            config.Repo,
+		baseURL:         config.BaseURL + "/",
+		dbConn:          config.Conn,
+		userIDGenerator: config.UserIDGenerator,
+		deleteService:   config.DeleteService,
+	}
+	h.Router = NewRouter(h)
+	return h
+}
+
 func NewRouter(appHandler *AppHandler) chi.Router {
 	r := chi.NewRouter()
 	r.Use(myMiddleware.NewAuthService(appHandler.userIDGenerator).Auth)
@@ -71,18 +83,6 @@ func NewRouter(appHandler *AppHandler) chi.Router {
 	})
 
 	return r
-}
-
-func NewAppHandler(config *config.AppConfig) *AppHandler {
-	h := &AppHandler{
-		repo:            config.Repo,
-		baseURL:         config.BaseURL + "/",
-		dbConn:          config.Conn,
-		userIDGenerator: config.UserIDGenerator,
-		deleteService:   config.DeleteService,
-	}
-	h.Router = NewRouter(h)
-	return h
 }
 
 func (a *AppHandler) addURLRest(w http.ResponseWriter, r *http.Request) {

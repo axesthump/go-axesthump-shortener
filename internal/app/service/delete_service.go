@@ -43,15 +43,15 @@ func (ds *DeleteService) AddURLs(data string, userID uint32) {
 	}()
 }
 
+func (ds *DeleteService) Close() {
+	close(ds.urlsForDelete)
+}
+
 func (ds *DeleteService) reAddURLs(urls []repository.DeleteURL) {
 	time.Sleep(time.Millisecond * 100)
 	go func() {
 		ds.urlsForDelete <- urls
 	}()
-}
-
-func (ds *DeleteService) Close() {
-	close(ds.urlsForDelete)
 }
 
 func getURLsFromArr(data string, userID uint32, baseURL string) []repository.DeleteURL {

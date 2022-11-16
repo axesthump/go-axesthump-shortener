@@ -34,10 +34,10 @@ func (a *authService) Auth(next http.Handler) http.Handler {
 		var userID uint32
 		var ok bool
 		if err != nil {
-			userID = a.GenerateCookie(w)
+			userID = a.generateCookie(w)
 		} else {
 			if ok, userID = a.validateCookie(cookie); !ok {
-				userID = a.GenerateCookie(w)
+				userID = a.generateCookie(w)
 			}
 		}
 		ctx := context.WithValue(r.Context(), UserIDKey, userID)
@@ -45,7 +45,7 @@ func (a *authService) Auth(next http.Handler) http.Handler {
 	})
 }
 
-func (a *authService) GenerateCookie(w http.ResponseWriter) uint32 {
+func (a *authService) generateCookie(w http.ResponseWriter) uint32 {
 	newUserID := a.idGenerator.GetID()
 	log.Printf("Generate new user id - %d\n", newUserID)
 	newUserIDBytes := make([]byte, 4)

@@ -25,7 +25,7 @@ type AppConfig struct {
 	dbConnURL   string
 }
 
-func CreateAppConfig() (*AppConfig, error) {
+func NewAppConfig() (*AppConfig, error) {
 	appConfig := getConsoleArgs()
 	setDBConn(appConfig)
 	if err := setStorage(appConfig); err != nil {

@@ -36,26 +36,6 @@ func NewLocalStorage(filename string) (*LocalStorage, error) {
 	}, nil
 }
 
-func getLastID(file *os.File) int64 {
-	var lastID int64
-	var err error
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		data := scanner.Text()
-		urlData := strings.Split(data, splitSeq)
-		if len(urlData) != countDataInRow {
-			panic(errors.New("bad data in file"))
-		}
-		if lastID, err = strconv.ParseInt(urlData[1], 10, 64); err != nil {
-			panic(errors.New("bad data in file"))
-		}
-	}
-	if _, err = file.Seek(0, io.SeekStart); err != nil {
-		return 0
-	}
-	return lastID + 1
-}
-
 func (ls *LocalStorage) GetUserLastID() uint32 {
 	var lastID int64
 	var err error
@@ -238,6 +218,26 @@ func (ls *LocalStorage) GetAllURLs(ctx context.Context, beginURL string, userID 
 		urls = append(urls, url)
 	}
 	return urls
+}
+
+func getLastID(file *os.File) int64 {
+	var lastID int64
+	var err error
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		data := scanner.Text()
+		urlData := strings.Split(data, splitSeq)
+		if len(urlData) != countDataInRow {
+			panic(errors.New("bad data in file"))
+		}
+		if lastID, err = strconv.ParseInt(urlData[1], 10, 64); err != nil {
+			panic(errors.New("bad data in file"))
+		}
+	}
+	if _, err = file.Seek(0, io.SeekStart); err != nil {
+		return 0
+	}
+	return lastID + 1
 }
 
 func createRow(userID int64, shortURL string, fullURL string, isDeleted string) string {

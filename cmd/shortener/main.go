@@ -29,7 +29,7 @@ func handleShutdown(signalHandler chan os.Signal, done chan bool, conf *config.A
 }
 
 func main() {
-	conf, err := config.CreateAppConfig()
+	conf, err := config.NewAppConfig()
 	signalHandler := make(chan os.Signal, 1)
 	done := make(chan bool, 1)
 	signal.Notify(signalHandler, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
