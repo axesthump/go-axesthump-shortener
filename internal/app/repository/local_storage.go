@@ -12,17 +12,28 @@ import (
 	"sync"
 )
 
+// Info about store data in file.
 const (
-	splitSeq       = "~s~e~c~"
-	countDataInRow = 4
+	splitSeq       = "~s~e~c~" // separator for one row with data
+	countDataInRow = 4         // count data from url in one row
 )
 
+// url delete url info.
+type url struct {
+	url       string
+	fullURL   string
+	userID    uint32
+	isDeleted bool
+}
+
+// LocalStorage contains data for local storage.
 type LocalStorage struct {
 	sync.RWMutex
 	file        *os.File
 	idGenerator *generator.IDGenerator
 }
 
+// NewLocalStorage returns new LocalStorage.
 func NewLocalStorage(filename string) (*LocalStorage, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {
@@ -36,6 +47,7 @@ func NewLocalStorage(filename string) (*LocalStorage, error) {
 	}, nil
 }
 
+// GetUserLastID returns last user id contains in local storage.
 func (ls *LocalStorage) GetUserLastID() uint32 {
 	var lastID int64
 	var err error
@@ -220,6 +232,11 @@ func (ls *LocalStorage) GetAllURLs(ctx context.Context, beginURL string, userID 
 	return urls
 }
 
+func (ls *LocalStorage) Close() error {
+	return ls.file.Close()
+}
+
+// getLastID returns last short url in local storage.
 func getLastID(file *os.File) int64 {
 	var lastID int64
 	var err error
@@ -240,13 +257,10 @@ func getLastID(file *os.File) int64 {
 	return lastID + 1
 }
 
+// createRow returns new row to append in local storage.
 func createRow(userID int64, shortURL string, fullURL string, isDeleted string) string {
 	return strconv.FormatInt(userID, 10) +
 		splitSeq + shortURL +
 		splitSeq + fullURL +
 		splitSeq + isDeleted
-}
-
-func (ls *LocalStorage) Close() error {
-	return ls.file.Close()
 }

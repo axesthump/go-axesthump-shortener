@@ -9,6 +9,7 @@ import (
 	"strconv"
 )
 
+// LongURLConflictError an error that occurs when the original urls conflict.
 type LongURLConflictError struct {
 }
 
@@ -16,11 +17,13 @@ func (e *LongURLConflictError) Error() string {
 	return "LongURL conflict"
 }
 
+// dbStorage contains data for db.
 type dbStorage struct {
 	conn *pgx.Conn
 	ctx  context.Context
 }
 
+// NewDBStorage returns new dbStorage.
 func NewDBStorage(ctx context.Context, conn *pgx.Conn) *dbStorage {
 	db := &dbStorage{
 		conn: conn,
@@ -189,6 +192,7 @@ func (db *dbStorage) Close() error {
 	return db.conn.Close(db.ctx)
 }
 
+// convertShortIDs create array with short ids.
 func convertShortIDs(urlsForDelete []DeleteURL) pq.Int64Array {
 	shortIDs := pq.Int64Array{}
 	for _, url := range urlsForDelete {

@@ -11,15 +11,21 @@ import (
 	"net/http"
 )
 
+// userKeyID type for store user id in context.
 type userKeyID string
 
+// UserIDKey key for store user id in context.
 const UserIDKey userKeyID = "id"
 
+// authService contains data for auth.
 type authService struct {
+	// idGenerator - service for generation unique id.
 	idGenerator *generator.IDGenerator
-	secretKey   []byte
+	// secretKey - secret key for hash.
+	secretKey []byte
 }
 
+// NewAuthService returns new authService
 func NewAuthService(generator *generator.IDGenerator) *authService {
 	as := &authService{
 		idGenerator: generator,
@@ -28,6 +34,7 @@ func NewAuthService(generator *generator.IDGenerator) *authService {
 	return as
 }
 
+// Auth middleware for auth. Returns handler with user id in context.
 func (a *authService) Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("auth")
@@ -45,6 +52,8 @@ func (a *authService) Auth(next http.Handler) http.Handler {
 	})
 }
 
+// generateCookie generate new cookie.
+// Hash new user id with secret key, then concatenate user id and hash and convert in to hex.
 func (a *authService) generateCookie(w http.ResponseWriter) uint32 {
 	newUserID := a.idGenerator.GetID()
 	log.Printf("Generate new user id - %d\n", newUserID)
@@ -64,6 +73,7 @@ func (a *authService) generateCookie(w http.ResponseWriter) uint32 {
 	return uint32(newUserID)
 }
 
+// validateCookie validate cookie.
 func (a *authService) validateCookie(cookie *http.Cookie) (bool, uint32) {
 	data, err := hex.DecodeString(cookie.Value)
 	if err != nil {

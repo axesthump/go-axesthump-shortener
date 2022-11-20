@@ -1,9 +1,11 @@
+// Package generator define IDGenerator to generate a unique id.
 package generator
 
 import (
 	"context"
 )
 
+// IDGenerator contains data for generate a unique id.
 type IDGenerator struct {
 	id     int64
 	idCh   chan int64
@@ -11,6 +13,7 @@ type IDGenerator struct {
 	cancel context.CancelFunc
 }
 
+// NewIDGenerator returns new IDGenerator where unique id start with startID.
 func NewIDGenerator(startID int64) *IDGenerator {
 	ctx, cancel := context.WithCancel(context.Background())
 	idGenerator := &IDGenerator{
@@ -23,22 +26,27 @@ func NewIDGenerator(startID int64) *IDGenerator {
 	return idGenerator
 }
 
+// GetID returns new unique id.
 func (g *IDGenerator) GetID() int64 {
 	return <-g.idCh
 }
 
+// Cancel stopping process id generation.
 func (g *IDGenerator) Cancel() {
 	g.cancel()
 }
 
+// IsCreatedID check id is created.
 func (g *IDGenerator) IsCreatedID(id uint32) bool {
 	return int64(id) < g.id
 }
 
+// start process generation unique id.
 func (g *IDGenerator) start() {
 	for {
 		select {
 		case <-g.ctx.Done():
+			close(g.idCh)
 			return
 		default:
 			id := g.id

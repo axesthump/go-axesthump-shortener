@@ -1,3 +1,4 @@
+// Package config define AppConfig for server configuration.
 package config
 
 import (
@@ -12,6 +13,7 @@ import (
 	"os"
 )
 
+// AppConfig contains data for configuration
 type AppConfig struct {
 	ServerAddr      string
 	BaseURL         string
@@ -25,6 +27,8 @@ type AppConfig struct {
 	dbConnURL   string
 }
 
+// NewAppConfig return new AppConfig or error if it fails to create
+// Creates and connects a repository based on the flags passed to the program.
 func NewAppConfig() (*AppConfig, error) {
 	appConfig := getConsoleArgs()
 	setDBConn(appConfig)
@@ -35,6 +39,8 @@ func NewAppConfig() (*AppConfig, error) {
 	return appConfig, nil
 }
 
+// setDBConn establishes a db connection
+// If the database url was not passed to the program, then the installation will not occur and the execution will continue.
 func setDBConn(config *AppConfig) {
 	if len(config.dbConnURL) == 0 {
 		config.Conn = nil
@@ -51,6 +57,7 @@ func setDBConn(config *AppConfig) {
 	createTable(config)
 }
 
+// createTable create table shortener if not exists.
 func createTable(config *AppConfig) {
 	query := "CREATE TABLE IF NOT EXISTS shortener (shortener_id SERIAL PRIMARY KEY, long_url varchar(255) NOT NULL UNIQUE, user_id int NOT NULL, is_deleted BOOLEAN DEFAULT FALSE NOT NULL); CREATE INDEX IF NOT EXISTS idx_shortener_user_id ON shortener(user_id);"
 	_, err := config.Conn.Exec(config.DBContext, query)
@@ -59,6 +66,7 @@ func createTable(config *AppConfig) {
 	}
 }
 
+// setStorage a factory method that sets the required repository based on their configuration.
 func setStorage(config *AppConfig) error {
 	var lastUserID uint32
 	switch {
@@ -84,6 +92,9 @@ func setStorage(config *AppConfig) error {
 	return nil
 }
 
+// getConsoleArgs fills the configuration with the values from the set flags,
+// if they are not present, then fills with the values from the environment changes,
+// if they are also not present, then fills with empty strings.
 func getConsoleArgs() *AppConfig {
 	serverAddr := flag.String(
 		"a",

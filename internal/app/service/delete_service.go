@@ -1,3 +1,4 @@
+// Package service define service for delete.
 package service
 
 import (
@@ -7,12 +8,15 @@ import (
 	"time"
 )
 
+// DeleteService contains data for delete service.
 type DeleteService struct {
+	// urlsForDelete - take urls for delete.
 	urlsForDelete chan []repository.DeleteURL
 	repo          repository.Repository
 	baseURL       string
 }
 
+// NewDeleteService return new DeleteService and start deleteService logic.
 func NewDeleteService(repo repository.Repository, baseURL string) *DeleteService {
 	ds := &DeleteService{
 		urlsForDelete: make(chan []repository.DeleteURL),
@@ -37,6 +41,7 @@ func NewDeleteService(repo repository.Repository, baseURL string) *DeleteService
 	return ds
 }
 
+// AddURLs add new urls for delete in chan.
 func (ds *DeleteService) AddURLs(data string, userID uint32) {
 	go func() {
 		ds.urlsForDelete <- getURLsFromArr(data, userID, ds.baseURL)
@@ -47,6 +52,7 @@ func (ds *DeleteService) Close() {
 	close(ds.urlsForDelete)
 }
 
+// reAddURLs if db connection is unstable urls for delete add in chan again.
 func (ds *DeleteService) reAddURLs(urls []repository.DeleteURL) {
 	time.Sleep(time.Millisecond * 100)
 	go func() {
@@ -54,6 +60,7 @@ func (ds *DeleteService) reAddURLs(urls []repository.DeleteURL) {
 	}()
 }
 
+// getURLsFromArr convert data to slice DeleteURL.
 func getURLsFromArr(data string, userID uint32, baseURL string) []repository.DeleteURL {
 	data = data[1 : len(data)-1]
 	splitData := strings.Split(data, ",")

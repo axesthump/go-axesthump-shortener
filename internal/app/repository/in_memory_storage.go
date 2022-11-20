@@ -8,18 +8,21 @@ import (
 	"sync"
 )
 
+// StorageURL url info.
 type StorageURL struct {
 	url       string
 	userID    uint32
 	isDeleted bool
 }
 
+// InMemoryStorage contains data for in memory storage.
 type InMemoryStorage struct {
 	sync.RWMutex
 	userURLs    map[int64]*StorageURL
 	idGenerator *generator.IDGenerator
 }
 
+// NewInMemoryStorage returns new InMemoryStorage.
 func NewInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
 		userURLs:    make(map[int64]*StorageURL),
