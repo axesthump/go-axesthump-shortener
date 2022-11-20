@@ -672,7 +672,7 @@ func TestAppHandler_addListURLRest(t *testing.T) {
 				assert.Equal(t, http.StatusBadRequest, res.StatusCode)
 			} else {
 				actualBody := make([]addListURLsResponse, 0)
-				body, err := io.ReadAll(w.Result().Body)
+				body, err := io.ReadAll(res.Body)
 				res.Body.Close()
 				assert.NoError(t, err)
 				err = json.Unmarshal(body, &actualBody)
