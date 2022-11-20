@@ -666,7 +666,6 @@ func TestAppHandler_addListURLRest(t *testing.T) {
 			w := httptest.NewRecorder()
 			handler := http.HandlerFunc(a.addListURLRest)
 			handler.ServeHTTP(w, r)
-			defer w.Result().Body.Close()
 
 			if tt.want.needError {
 				assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
@@ -680,6 +679,7 @@ func TestAppHandler_addListURLRest(t *testing.T) {
 				assert.Equal(t, 3, len(actualBody))
 				assert.Equalf(t, expected, actualBody, "")
 			}
+			w.Result().Body.Close()
 		})
 	}
 }
