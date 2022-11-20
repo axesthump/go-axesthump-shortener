@@ -666,13 +666,13 @@ func TestAppHandler_addListURLRest(t *testing.T) {
 			w := httptest.NewRecorder()
 			handler := http.HandlerFunc(a.addListURLRest)
 			handler.ServeHTTP(w, r)
+			defer w.Result().Body.Close()
 
 			if tt.want.needError {
 				assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
 			} else {
 				actualBody := make([]addListURLsResponse, 0)
 				body, err := io.ReadAll(w.Result().Body)
-				defer w.Result().Body.Close()
 				assert.NoError(t, err)
 				err = json.Unmarshal(body, &actualBody)
 				assert.NoError(t, err)
