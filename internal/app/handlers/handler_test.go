@@ -668,10 +668,12 @@ func TestAppHandler_addListURLRest(t *testing.T) {
 			handler.ServeHTTP(w, r)
 
 			if tt.want.needError {
+				w.Result().Body.Close()
 				assert.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
 			} else {
 				actualBody := make([]addListURLsResponse, 0)
 				body, err := io.ReadAll(w.Result().Body)
+				w.Result().Body.Close()
 				assert.NoError(t, err)
 				err = json.Unmarshal(body, &actualBody)
 				assert.NoError(t, err)
@@ -679,7 +681,6 @@ func TestAppHandler_addListURLRest(t *testing.T) {
 				assert.Equal(t, 3, len(actualBody))
 				assert.Equalf(t, expected, actualBody, "")
 			}
-			w.Result().Body.Close()
 		})
 	}
 }
