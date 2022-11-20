@@ -14,6 +14,7 @@ type gzipWriter struct {
 	Writer io.Writer
 }
 
+// Write insert data into gzip.
 func (g gzipWriter) Write(data []byte) (int, error) {
 	return g.Writer.Write(data)
 }

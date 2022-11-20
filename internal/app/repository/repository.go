@@ -8,6 +8,7 @@ import (
 type DeletedURLError struct {
 }
 
+// Error return DeletedURLError description.
 func (e *DeletedURLError) Error() string {
 	return "URL deleted"
 }

@@ -48,6 +48,7 @@ func (ds *DeleteService) AddURLs(data string, userID uint32) {
 	}()
 }
 
+// Close closing chan urlsForDelete.
 func (ds *DeleteService) Close() {
 	close(ds.urlsForDelete)
 }

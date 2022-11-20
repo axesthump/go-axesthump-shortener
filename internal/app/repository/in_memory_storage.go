@@ -30,6 +30,7 @@ func NewInMemoryStorage() *InMemoryStorage {
 	}
 }
 
+// CreateShortURL create short url. Returns short url if operations success or error.
 func (s *InMemoryStorage) CreateShortURL(
 	ctx context.Context,
 	beginURL string,
@@ -48,6 +49,7 @@ func (s *InMemoryStorage) CreateShortURL(
 	return shortURL, nil
 }
 
+// GetFullURL returns full url by short url.
 func (s *InMemoryStorage) GetFullURL(ctx context.Context, shortURL int64) (string, error) {
 	s.RLock()
 	defer s.RUnlock()
@@ -60,6 +62,7 @@ func (s *InMemoryStorage) GetFullURL(ctx context.Context, shortURL int64) (strin
 	return "", fmt.Errorf("URL dont exist")
 }
 
+// GetAllURLs returns all urls owned specific user.
 func (s *InMemoryStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []URLInfo {
 	s.RLock()
 	defer s.RUnlock()
@@ -78,6 +81,8 @@ func (s *InMemoryStorage) GetAllURLs(ctx context.Context, beginURL string, userI
 	}
 	return urls
 }
+
+// CreateShortURLs create short urls. Returns slice short urls if operations success or error.
 func (s *InMemoryStorage) CreateShortURLs(
 	ctx context.Context,
 	beginURL string,
@@ -98,6 +103,7 @@ func (s *InMemoryStorage) CreateShortURLs(
 	return res, nil
 }
 
+// DeleteURLs delete url from urlsForDelete.
 func (s *InMemoryStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	s.Lock()
 	for _, urlForDelete := range urlsForDelete {
@@ -115,6 +121,7 @@ func (s *InMemoryStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	return nil
 }
 
+// Close closes everything that should be closed in the context of the repository.
 func (s *InMemoryStorage) Close() error {
 	s.idGenerator.Cancel()
 	return nil

@@ -69,6 +69,7 @@ func (ls *LocalStorage) GetUserLastID() uint32 {
 	return uint32(max + 1)
 }
 
+// CreateShortURL create short url. Returns short url if operations success or error.
 func (ls *LocalStorage) CreateShortURL(
 	ctx context.Context,
 	beginURL string,
@@ -93,6 +94,7 @@ func (ls *LocalStorage) CreateShortURL(
 	return shortURL, nil
 }
 
+// CreateShortURLs create short urls. Returns slice short urls if operations success or error.
 func (ls *LocalStorage) CreateShortURLs(
 	ctx context.Context,
 	beginURL string,
@@ -113,6 +115,7 @@ func (ls *LocalStorage) CreateShortURLs(
 	return res, nil
 }
 
+// GetFullURL returns full url by short url.
 func (ls *LocalStorage) GetFullURL(ctx context.Context, shortURL int64) (string, error) {
 	ls.RLock()
 	defer ls.RUnlock()
@@ -150,6 +153,7 @@ func (ls *LocalStorage) GetFullURL(ctx context.Context, shortURL int64) (string,
 	}
 }
 
+// DeleteURLs delete url from urlsForDelete.
 func (ls *LocalStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	ls.Lock()
 	defer ls.Unlock()
@@ -197,6 +201,7 @@ func (ls *LocalStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	return nil
 }
 
+// GetAllURLs returns all urls owned specific user.
 func (ls *LocalStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []URLInfo {
 	ls.RLock()
 	defer ls.RUnlock()
@@ -232,6 +237,7 @@ func (ls *LocalStorage) GetAllURLs(ctx context.Context, beginURL string, userID 
 	return urls
 }
 
+// Close closes everything that should be closed in the context of the repository.
 func (ls *LocalStorage) Close() error {
 	return ls.file.Close()
 }
