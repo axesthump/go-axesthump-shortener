@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 )
 
-func ExampleAddURLRest() {
+func Example_addURLRest() {
 	conf, err := config.NewAppConfig()
 	if err != nil {
 		log.Fatal(err)
@@ -28,7 +28,7 @@ func ExampleAddURLRest() {
 	handler.ServeHTTP(w, r)
 }
 
-func ExampleAddURL() {
+func Example_addURL() {
 	conf, err := config.NewAppConfig()
 	if err != nil {
 		log.Fatal(err)
@@ -46,7 +46,7 @@ func ExampleAddURL() {
 	handler.ServeHTTP(w, r)
 }
 
-func ExampleAddListURLRest() {
+func Example_addListURLRest() {
 	conf, err := config.NewAppConfig()
 	if err != nil {
 		log.Fatal(err)
@@ -76,7 +76,7 @@ func ExampleAddListURLRest() {
 	handler.ServeHTTP(w, r)
 }
 
-func ExampleGetURL() {
+func Example_getURL() {
 	conf, err := config.NewAppConfig()
 	if err != nil {
 		log.Fatal(err)
@@ -94,7 +94,7 @@ func ExampleGetURL() {
 	handler.ServeHTTP(w, r)
 }
 
-func ExampleListURLs() {
+func Example_listURLs() {
 	conf, err := config.NewAppConfig()
 	if err != nil {
 		log.Fatal(err)
@@ -112,7 +112,7 @@ func ExampleListURLs() {
 	handler.ServeHTTP(w, r)
 }
 
-func ExampleDeleteListURLs() {
+func Example_deleteListURLs() {
 	conf, err := config.NewAppConfig()
 	if err != nil {
 		log.Fatal(err)
@@ -130,7 +130,7 @@ func ExampleDeleteListURLs() {
 	handler.ServeHTTP(w, r)
 }
 
-func ExamplePing() {
+func Example_ping() {
 	conf, err := config.NewAppConfig()
 	if err != nil {
 		log.Fatal(err)
