@@ -33,6 +33,7 @@ type URLWithID struct {
 	URL           string
 }
 
+// Repository define api for work with storage.
 type Repository interface {
 	// CreateShortURL create short url. Returns short url if operations success or error.
 	CreateShortURL(ctx context.Context, beginURL string, originalURL string, userID uint32) (string, error)
