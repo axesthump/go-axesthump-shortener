@@ -3,13 +3,19 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
+	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go-axesthump-shortener/internal/app/config"
+	"go-axesthump-shortener/internal/app/generator"
+	myMiddleware "go-axesthump-shortener/internal/app/middleware"
 	"go-axesthump-shortener/internal/app/mocks"
 	"go-axesthump-shortener/internal/app/repository"
-	"go-axesthump-shortener/internal/app/user"
+	"go-axesthump-shortener/internal/app/service"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -31,6 +37,9 @@ func (m *mockStorage) DeleteURLs(urlsForDelete []repository.DeleteURL) error {
 }
 
 func (m *mockStorage) CreateShortURL(ctx context.Context, beginURL string, originalURL string, userID uint32) (string, error) {
+	if m.needError {
+		return "", &repository.LongURLConflictError{}
+	}
 	return shortURL, nil
 }
 
@@ -101,7 +110,7 @@ func TestAppHandler_getURL(t *testing.T) {
 			},
 		},
 		{
-			name: "check bad requestURL",
+			name: "check bad arrURLRequest",
 			fields: fields{
 				requestURL: "/some",
 				storage: &mockStorage{
@@ -114,7 +123,7 @@ func TestAppHandler_getURL(t *testing.T) {
 			},
 		},
 		{
-			name: "check bad requestURL",
+			name: "check bad arrURLRequest",
 			fields: fields{
 				requestURL: "/",
 				storage: &mockStorage{
@@ -127,7 +136,7 @@ func TestAppHandler_getURL(t *testing.T) {
 			},
 		},
 		{
-			name: "check bad requestURL",
+			name: "check bad arrURLRequest",
 			fields: fields{
 				requestURL: "/0/0",
 				storage: &mockStorage{
@@ -144,7 +153,7 @@ func TestAppHandler_getURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
 				repo:            tt.fields.storage,
-				userIDGenerator: user.NewUserIDGenerator(0),
+				userIDGenerator: generator.NewIDGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)
@@ -201,7 +210,7 @@ func TestAppHandler_addURL(t *testing.T) {
 			},
 		},
 		{
-			name: "check bad requestURL",
+			name: "check bad arrURLRequest",
 			fields: fields{
 				requestURL: "/0",
 				storage: &mockStorage{
@@ -227,12 +236,27 @@ func TestAppHandler_addURL(t *testing.T) {
 				contentType: "text/plain",
 			},
 		},
+		{
+			name: "check conflict url body",
+			fields: fields{
+				requestURL: "/",
+				storage: &mockStorage{
+					needError: true,
+				},
+				body: []byte("url"),
+			},
+			want: want{
+				statusCode:  http.StatusConflict,
+				body:        "",
+				contentType: "text/plain",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
 				repo:            tt.fields.storage,
-				userIDGenerator: user.NewUserIDGenerator(0),
+				userIDGenerator: generator.NewIDGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)
@@ -332,12 +356,27 @@ func TestAppHandler_addURLRest(t *testing.T) {
 				contentType: "application/json",
 			},
 		},
+		{
+			name: "check conflict url body",
+			fields: fields{
+				requestURL: "/api/shorten",
+				storage: &mockStorage{
+					needError: true,
+				},
+				body: []byte(`{"url":"url"}`),
+			},
+			want: want{
+				statusCode:  http.StatusConflict,
+				body:        "",
+				contentType: "application/json",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AppHandler{
 				repo:            tt.fields.storage,
-				userIDGenerator: user.NewUserIDGenerator(0),
+				userIDGenerator: generator.NewIDGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)
@@ -395,7 +434,7 @@ func TestAppHandler_listURLs(t *testing.T) {
 			defer ctrl.Finish()
 			a := &AppHandler{
 				repo:            repo,
-				userIDGenerator: user.NewUserIDGenerator(0),
+				userIDGenerator: generator.NewIDGenerator(0),
 			}
 			r := NewRouter(a)
 			ts := httptest.NewServer(r)
@@ -424,6 +463,224 @@ func TestAppHandler_listURLs(t *testing.T) {
 
 			assert.Equal(t, tt.want.statusCode, res.StatusCode)
 			assert.Equal(t, tt.want.urls, strings.TrimRight(string(body), "\n"))
+		})
+	}
+}
+
+func BenchmarkAppHandler_addURLRest(b *testing.B) {
+	b.Run("Endpoint api/shorten", func(b *testing.B) {
+		a := &AppHandler{
+			repo:            &mockStorage{},
+			userIDGenerator: generator.NewIDGenerator(0),
+		}
+		r, _ := http.NewRequestWithContext(
+			context.WithValue(context.TODO(), myMiddleware.UserIDKey, uint32(1)),
+			http.MethodPost,
+			"api/shorten",
+			bytes.NewBuffer([]byte(`{"url":"1"}`)),
+		)
+		w := httptest.NewRecorder()
+		handler := http.HandlerFunc(a.addURLRest)
+
+		b.ReportAllocs()
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			handler.ServeHTTP(w, r)
+		}
+	})
+}
+
+func BenchmarkAppHandler_getURL(b *testing.B) {
+	b.Run("Endpoint /1", func(b *testing.B) {
+		ctrl := gomock.NewController(b)
+		repo := mocks.NewMockRepository(ctrl)
+		defer ctrl.Finish()
+		a := &AppHandler{
+			repo:            repo,
+			userIDGenerator: generator.NewIDGenerator(0),
+		}
+		r, _ := http.NewRequest(
+			http.MethodGet,
+			"/{shortURL}",
+			nil,
+		)
+
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("shortURL", "1")
+		r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+		w := httptest.NewRecorder()
+		handler := http.HandlerFunc(a.getURL)
+
+		repo.EXPECT().GetFullURL(gomock.Any(), int64(1)).Return("fullURL", nil).AnyTimes()
+
+		b.ReportAllocs()
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			handler.ServeHTTP(w, r)
+		}
+	})
+}
+
+func TestAppHandler_ping(t *testing.T) {
+	a := &AppHandler{
+		dbConn:          nil,
+		repo:            &mockStorage{},
+		userIDGenerator: generator.NewIDGenerator(0),
+	}
+	r, _ := http.NewRequest(
+		http.MethodGet,
+		"/ping",
+		nil,
+	)
+	w := httptest.NewRecorder()
+	handler := http.HandlerFunc(a.ping)
+	handler.ServeHTTP(w, r)
+}
+
+func TestNewAppHandler(t *testing.T) {
+	repo := mockStorage{}
+	conf := config.AppConfig{
+		Repo:            &repo,
+		BaseURL:         "baseURL",
+		Conn:            nil,
+		UserIDGenerator: generator.NewIDGenerator(0),
+		DeleteService:   service.NewDeleteService(&repo, "baseURL"),
+	}
+
+	appHandler := NewAppHandler(&conf)
+
+	assert.Equal(t, appHandler.baseURL, "baseURL/")
+	assert.Nil(t, appHandler.dbConn)
+	assert.Equal(t, appHandler.repo, &repo)
+	assert.Equal(t, appHandler.userIDGenerator.GetID(), int64(0))
+}
+
+func TestAppHandler_addListURLRest(t *testing.T) {
+	type fields struct {
+		body            []byte
+		userIDGenerator *generator.IDGenerator
+		baseURL         string
+		dbConn          *pgx.Conn
+	}
+	type args struct {
+		w http.ResponseWriter
+		r *http.Request
+	}
+	type Want struct {
+		needError bool
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   Want
+	}{
+		{
+			name: "addListURLRest success",
+			fields: fields{
+				body: []byte(`[
+					{
+						"correlation_id": "first",
+						"original_url": "<URL для сокращени>"
+					},
+					{
+						"correlation_id": "second",
+						"original_url": "<URL для сокраения>"
+					},
+					{
+						"correlation_id": "last",
+						"original_url": "<URL дя сокращения>"
+					}
+				] `),
+				userIDGenerator: generator.NewIDGenerator(0),
+				baseURL:         "http://localhost:8080/",
+				dbConn:          nil,
+			},
+			want: Want{
+				needError: false,
+			},
+		},
+		{
+			name: "addListURLRest with empty body",
+			fields: fields{
+				body:            nil,
+				userIDGenerator: generator.NewIDGenerator(0),
+				baseURL:         "http://localhost:8080/",
+				dbConn:          nil,
+			},
+			want: Want{
+				needError: true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			repo := mocks.NewMockRepository(ctrl)
+			defer ctrl.Finish()
+
+			r, _ := http.NewRequestWithContext(
+				context.WithValue(context.TODO(), myMiddleware.UserIDKey, uint32(1)),
+				http.MethodPost,
+				"/batch",
+				bytes.NewReader(tt.fields.body),
+			)
+			a := &AppHandler{
+				repo:            repo,
+				userIDGenerator: tt.fields.userIDGenerator,
+				baseURL:         tt.fields.baseURL,
+				dbConn:          tt.fields.dbConn,
+				deleteService:   service.NewDeleteService(repo, tt.fields.baseURL),
+			}
+
+			repo.EXPECT().CreateShortURLs(gomock.Any(), a.baseURL, gomock.Any(), uint32(1)).Return([]repository.URLWithID{
+				{
+					CorrelationID: "first",
+					URL:           "http://localhost:8080/1",
+				},
+				{
+					CorrelationID: "second",
+					URL:           "http://localhost:8080/2",
+				},
+				{
+					CorrelationID: "last",
+					URL:           "http://localhost:8080/3",
+				},
+			}, nil).AnyTimes()
+			expected := []addListURLsResponse{
+				{
+					CorrelationID: "first",
+					ShortURL:      "http://localhost:8080/1",
+				},
+				{
+					CorrelationID: "second",
+					ShortURL:      "http://localhost:8080/2",
+				},
+				{
+					CorrelationID: "last",
+					ShortURL:      "http://localhost:8080/3",
+				},
+			}
+			w := httptest.NewRecorder()
+			handler := http.HandlerFunc(a.addListURLRest)
+			handler.ServeHTTP(w, r)
+			res := w.Result()
+			if tt.want.needError {
+				res.Body.Close()
+				assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+			} else {
+				actualBody := make([]addListURLsResponse, 0)
+				body, err := io.ReadAll(res.Body)
+				res.Body.Close()
+				assert.NoError(t, err)
+				err = json.Unmarshal(body, &actualBody)
+				assert.NoError(t, err)
+				assert.Equal(t, http.StatusCreated, res.StatusCode)
+				assert.Equal(t, 3, len(actualBody))
+				assert.Equalf(t, expected, actualBody, "")
+			}
 		})
 	}
 }

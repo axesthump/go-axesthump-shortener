@@ -9,18 +9,22 @@ import (
 	"strconv"
 )
 
+// LongURLConflictError an error that occurs when the original urls conflict.
 type LongURLConflictError struct {
 }
 
+// Error return error description.
 func (e *LongURLConflictError) Error() string {
 	return "LongURL conflict"
 }
 
+// dbStorage contains data for db.
 type dbStorage struct {
 	conn *pgx.Conn
 	ctx  context.Context
 }
 
+// NewDBStorage returns new dbStorage.
 func NewDBStorage(ctx context.Context, conn *pgx.Conn) *dbStorage {
 	db := &dbStorage{
 		conn: conn,
@@ -29,9 +33,10 @@ func NewDBStorage(ctx context.Context, conn *pgx.Conn) *dbStorage {
 	return db
 }
 
+// GetLastUserID return last created user id.
 func (db *dbStorage) GetLastUserID() int64 {
 	query := "SELECT MAX(user_id) FROM shortener;"
-	row := db.conn.QueryRow(context.Background(), query)
+	row := db.conn.QueryRow(db.ctx, query)
 	lastID := 0
 	err := row.Scan(&lastID)
 	if err != nil {
@@ -42,6 +47,7 @@ func (db *dbStorage) GetLastUserID() int64 {
 	return int64(lastID)
 }
 
+// CreateShortURL create short url. Returns short url if operations success or error.
 func (db *dbStorage) CreateShortURL(
 	ctx context.Context,
 	beginURL string,
@@ -73,6 +79,7 @@ func (db *dbStorage) CreateShortURL(
 	return shortURL, err
 }
 
+// GetShortURLByFullURL return short url from full url.
 func (db *dbStorage) GetShortURLByFullURL(ctx context.Context, fullURL string) (int64, error) {
 	query := "SELECT shortener_id FROM shortener WHERE long_url = $1"
 	row := db.conn.QueryRow(ctx, query, fullURL)
@@ -84,6 +91,7 @@ func (db *dbStorage) GetShortURLByFullURL(ctx context.Context, fullURL string) (
 	return *shortURL, nil
 }
 
+// GetFullURL returns full url by short url.
 func (db *dbStorage) GetFullURL(ctx context.Context, shortURL int64) (string, error) {
 	query := "SELECT long_url, is_deleted FROM shortener WHERE shortener_id = $1"
 	row := db.conn.QueryRow(ctx, query, shortURL)
@@ -99,6 +107,7 @@ func (db *dbStorage) GetFullURL(ctx context.Context, shortURL int64) (string, er
 	return *longURL, nil
 }
 
+// GetAllURLs returns all urls owned specific user.
 func (db *dbStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []URLInfo {
 	query := "SELECT shortener_id, long_url FROM shortener WHERE user_id = $1"
 	row, err := db.conn.Query(ctx, query, userID)
@@ -122,6 +131,7 @@ func (db *dbStorage) GetAllURLs(ctx context.Context, beginURL string, userID uin
 	return urls
 }
 
+// CreateShortURLs create short urls. Returns slice short urls if operations success or error.
 func (db *dbStorage) CreateShortURLs(
 	ctx context.Context,
 	beginURL string,
@@ -163,6 +173,7 @@ func (db *dbStorage) CreateShortURLs(
 	return res, nil
 }
 
+// DeleteURLs delete url from urlsForDelete.
 func (db *dbStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	tx, err := db.conn.Begin(db.ctx)
 	if err != nil {
@@ -185,6 +196,12 @@ func (db *dbStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	return err
 }
 
+// Close closes everything that should be closed in the context of the repository.
+func (db *dbStorage) Close() error {
+	return db.conn.Close(db.ctx)
+}
+
+// convertShortIDs create array with short ids.
 func convertShortIDs(urlsForDelete []DeleteURL) pq.Int64Array {
 	shortIDs := pq.Int64Array{}
 	for _, url := range urlsForDelete {
@@ -195,8 +212,4 @@ func convertShortIDs(urlsForDelete []DeleteURL) pq.Int64Array {
 		shortIDs = append(shortIDs, shortID)
 	}
 	return shortIDs
-}
-
-func (db *dbStorage) Close() error {
-	return db.conn.Close(db.ctx)
 }

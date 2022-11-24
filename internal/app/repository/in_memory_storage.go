@@ -3,47 +3,53 @@ package repository
 import (
 	"context"
 	"fmt"
+	"go-axesthump-shortener/internal/app/generator"
 	"strconv"
 	"sync"
 )
 
+// StorageURL url info.
 type StorageURL struct {
 	url       string
 	userID    uint32
 	isDeleted bool
 }
 
+// InMemoryStorage contains data for in memory storage.
 type InMemoryStorage struct {
 	sync.RWMutex
-	userURLs map[int64]*StorageURL
-	lastID   int64
+	userURLs    map[int64]*StorageURL
+	idGenerator *generator.IDGenerator
 }
 
+// NewInMemoryStorage returns new InMemoryStorage.
 func NewInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
-		userURLs: make(map[int64]*StorageURL),
-		lastID:   int64(0),
+		userURLs:    make(map[int64]*StorageURL),
+		idGenerator: generator.NewIDGenerator(0),
 	}
 }
 
+// CreateShortURL create short url. Returns short url if operations success or error.
 func (s *InMemoryStorage) CreateShortURL(
 	ctx context.Context,
 	beginURL string,
 	originalURL string,
 	userID uint32,
 ) (string, error) {
-	s.Lock()
-	defer s.Unlock()
-	shortEndpoint := strconv.FormatInt(s.lastID, 10)
+	newShortURL := s.idGenerator.GetID()
+	shortEndpoint := strconv.FormatInt(newShortURL, 10)
 	shortURL := beginURL + shortEndpoint
-	s.userURLs[s.lastID] = &StorageURL{
+	s.Lock()
+	s.userURLs[newShortURL] = &StorageURL{
 		url:    originalURL,
 		userID: userID,
 	}
-	s.lastID++
+	s.Unlock()
 	return shortURL, nil
 }
 
+// GetFullURL returns full url by short url.
 func (s *InMemoryStorage) GetFullURL(ctx context.Context, shortURL int64) (string, error) {
 	s.RLock()
 	defer s.RUnlock()
@@ -56,6 +62,7 @@ func (s *InMemoryStorage) GetFullURL(ctx context.Context, shortURL int64) (strin
 	return "", fmt.Errorf("URL dont exist")
 }
 
+// GetAllURLs returns all urls owned specific user.
 func (s *InMemoryStorage) GetAllURLs(ctx context.Context, beginURL string, userID uint32) []URLInfo {
 	s.RLock()
 	defer s.RUnlock()
@@ -74,6 +81,8 @@ func (s *InMemoryStorage) GetAllURLs(ctx context.Context, beginURL string, userI
 	}
 	return urls
 }
+
+// CreateShortURLs create short urls. Returns slice short urls if operations success or error.
 func (s *InMemoryStorage) CreateShortURLs(
 	ctx context.Context,
 	beginURL string,
@@ -94,6 +103,7 @@ func (s *InMemoryStorage) CreateShortURLs(
 	return res, nil
 }
 
+// DeleteURLs delete url from urlsForDelete.
 func (s *InMemoryStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	s.Lock()
 	for _, urlForDelete := range urlsForDelete {
@@ -111,6 +121,8 @@ func (s *InMemoryStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	return nil
 }
 
+// Close closes everything that should be closed in the context of the repository.
 func (s *InMemoryStorage) Close() error {
+	s.idGenerator.Cancel()
 	return nil
 }

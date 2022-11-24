@@ -6,21 +6,27 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
-	"go-axesthump-shortener/internal/app/user"
+	"go-axesthump-shortener/internal/app/generator"
 	"log"
 	"net/http"
 )
 
+// userKeyID type for store user id in context.
 type userKeyID string
 
+// UserIDKey key for store user id in context.
 const UserIDKey userKeyID = "id"
 
+// authService contains data for auth.
 type authService struct {
-	idGenerator *user.IDGenerator
-	secretKey   []byte
+	// idGenerator - service for generation unique id.
+	idGenerator *generator.IDGenerator
+	// secretKey - secret key for hash.
+	secretKey []byte
 }
 
-func NewAuthService(generator *user.IDGenerator) *authService {
+// NewAuthService returns new authService
+func NewAuthService(generator *generator.IDGenerator) *authService {
 	as := &authService{
 		idGenerator: generator,
 		secretKey:   []byte("secret_key"),
@@ -28,16 +34,17 @@ func NewAuthService(generator *user.IDGenerator) *authService {
 	return as
 }
 
+// Auth middleware for auth. Returns handler with user id in context.
 func (a *authService) Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("auth")
 		var userID uint32
 		var ok bool
 		if err != nil {
-			userID = a.GenerateCookie(w)
+			userID = a.generateCookie(w)
 		} else {
 			if ok, userID = a.validateCookie(cookie); !ok {
-				userID = a.GenerateCookie(w)
+				userID = a.generateCookie(w)
 			}
 		}
 		ctx := context.WithValue(r.Context(), UserIDKey, userID)
@@ -45,11 +52,13 @@ func (a *authService) Auth(next http.Handler) http.Handler {
 	})
 }
 
-func (a *authService) GenerateCookie(w http.ResponseWriter) uint32 {
-	newUserID := a.idGenerator.GetNewUserID()
+// generateCookie generate new cookie.
+// Hash new user id with secret key, then concatenate user id and hash and convert in to hex.
+func (a *authService) generateCookie(w http.ResponseWriter) uint32 {
+	newUserID := a.idGenerator.GetID()
 	log.Printf("Generate new user id - %d\n", newUserID)
 	newUserIDBytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(newUserIDBytes, newUserID)
+	binary.BigEndian.PutUint32(newUserIDBytes, uint32(newUserID))
 
 	h := hmac.New(sha256.New, a.secretKey)
 	h.Write(newUserIDBytes)
@@ -61,9 +70,10 @@ func (a *authService) GenerateCookie(w http.ResponseWriter) uint32 {
 		Value: token,
 	}
 	http.SetCookie(w, newCookie)
-	return newUserID
+	return uint32(newUserID)
 }
 
+// validateCookie validate cookie.
 func (a *authService) validateCookie(cookie *http.Cookie) (bool, uint32) {
 	data, err := hex.DecodeString(cookie.Value)
 	if err != nil {
@@ -77,7 +87,7 @@ func (a *authService) validateCookie(cookie *http.Cookie) (bool, uint32) {
 	if !hmac.Equal(hash, data[4:]) {
 		return false, 0
 	}
-	if !a.idGenerator.IsCreatedUser(userID) {
+	if !a.idGenerator.IsCreatedID(userID) {
 		return false, 0
 	}
 	return true, userID
