@@ -16,7 +16,7 @@ type DeleteService struct {
 	baseURL       string
 }
 
-// NewDeleteService return new DeleteService and start deleteService logic.
+// NewDeleteService returns new DeleteService and start deleteService logic.
 func NewDeleteService(repo repository.Repository, baseURL string) *DeleteService {
 	ds := &DeleteService{
 		urlsForDelete: make(chan []repository.DeleteURL),
@@ -41,7 +41,7 @@ func NewDeleteService(repo repository.Repository, baseURL string) *DeleteService
 	return ds
 }
 
-// AddURLs add new urls for delete in chan.
+// AddURLs adds new urls for delete in chan.
 func (ds *DeleteService) AddURLs(data string, userID uint32) {
 	go func() {
 		ds.urlsForDelete <- getURLsFromArr(data, userID, ds.baseURL)
@@ -61,7 +61,7 @@ func (ds *DeleteService) reAddURLs(urls []repository.DeleteURL) {
 	}()
 }
 
-// getURLsFromArr convert data to slice DeleteURL.
+// getURLsFromArr converts data to slice DeleteURL.
 func getURLsFromArr(data string, userID uint32, baseURL string) []repository.DeleteURL {
 	data = data[1 : len(data)-1]
 	splitData := strings.Split(data, ",")

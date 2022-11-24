@@ -61,7 +61,7 @@ type (
 	}
 )
 
-// NewAppHandler return new AppHandler.
+// NewAppHandler returns new AppHandler.
 func NewAppHandler(config *config.AppConfig) *AppHandler {
 	h := &AppHandler{
 		repo:            config.Repo,
@@ -74,7 +74,7 @@ func NewAppHandler(config *config.AppConfig) *AppHandler {
 	return h
 }
 
-// NewRouter return new router.
+// NewRouter returns new router.
 func NewRouter(appHandler *AppHandler) chi.Router {
 	r := chi.NewRouter()
 	r.Use(myMiddleware.NewAuthService(appHandler.userIDGenerator).Auth)
@@ -275,7 +275,7 @@ func (a *AppHandler) ping(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// addURLRest return json data from addURLResponse.
+// addURLRest returns json data from addURLResponse.
 func (a *AppHandler) createAddURLResponse(w http.ResponseWriter, shortURL string) ([]byte, error) {
 	buf := bytes.NewBuffer([]byte{})
 	encoder := json.NewEncoder(buf)
@@ -288,7 +288,7 @@ func (a *AppHandler) createAddURLResponse(w http.ResponseWriter, shortURL string
 	return buf.Bytes(), nil
 }
 
-// sendResponse write res in w with status and handle errors.
+// sendResponse writes res in w with status and handle errors.
 func sendResponse(w http.ResponseWriter, res []byte, status int) {
 	w.WriteHeader(status)
 	log.Printf("Response: %s\n", res)
@@ -298,7 +298,7 @@ func sendResponse(w http.ResponseWriter, res []byte, status int) {
 	}
 }
 
-// readBody read data from body.
+// readBody reads data from body.
 func readBody(w http.ResponseWriter, body io.ReadCloser) ([]byte, error) {
 	defer body.Close()
 	bodyBytes, err := io.ReadAll(body)

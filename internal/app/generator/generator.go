@@ -36,7 +36,7 @@ func (g *IDGenerator) Cancel() {
 	g.cancel()
 }
 
-// IsCreatedID check id is created.
+// IsCreatedID checks id is created.
 func (g *IDGenerator) IsCreatedID(id uint32) bool {
 	return int64(id) < g.id
 }

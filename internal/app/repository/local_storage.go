@@ -69,7 +69,7 @@ func (ls *LocalStorage) GetUserLastID() uint32 {
 	return uint32(max + 1)
 }
 
-// CreateShortURL create short url. Returns short url if operations success or error.
+// CreateShortURL creates short url. Returns short url if operations success or error.
 func (ls *LocalStorage) CreateShortURL(
 	ctx context.Context,
 	beginURL string,
@@ -94,7 +94,7 @@ func (ls *LocalStorage) CreateShortURL(
 	return shortURL, nil
 }
 
-// CreateShortURLs create short urls. Returns slice short urls if operations success or error.
+// CreateShortURLs creates short urls. Returns slice short urls if operations success or error.
 func (ls *LocalStorage) CreateShortURLs(
 	ctx context.Context,
 	beginURL string,
@@ -107,10 +107,8 @@ func (ls *LocalStorage) CreateShortURLs(
 		if err != nil {
 			return nil, err
 		}
-		res[i] = URLWithID{
-			CorrelationID: url.CorrelationID,
-			URL:           shortURL,
-		}
+		res[i].URL = shortURL
+		res[i].CorrelationID = url.CorrelationID
 	}
 	return res, nil
 }
@@ -153,7 +151,7 @@ func (ls *LocalStorage) GetFullURL(ctx context.Context, shortURL int64) (string,
 	}
 }
 
-// DeleteURLs delete url from urlsForDelete.
+// DeleteURLs deletes url from urlsForDelete.
 func (ls *LocalStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	ls.Lock()
 	defer ls.Unlock()
