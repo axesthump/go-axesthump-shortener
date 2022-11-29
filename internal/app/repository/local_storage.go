@@ -173,13 +173,13 @@ func (ls *LocalStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 			continue
 		}
 		shortURL := urlData[1]
-		url := url{
+		urlForDelete := url{
 			userID:    urlsForDelete[0].UserID,
 			url:       shortURL,
 			fullURL:   urlData[2],
 			isDeleted: true,
 		}
-		urlsForDeleteData = append(urlsForDeleteData, url)
+		urlsForDeleteData = append(urlsForDeleteData, urlForDelete)
 	}
 
 	fileForRead.Close()

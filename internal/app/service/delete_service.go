@@ -65,7 +65,7 @@ func (ds *DeleteService) reAddURLs(urls []repository.DeleteURL) {
 func getURLsFromArr(data string, userID uint32, baseURL string) []repository.DeleteURL {
 	data = data[1 : len(data)-1]
 	splitData := strings.Split(data, ",")
-	baseURL = baseURL + "/"
+	baseURL += "/"
 	urls := make([]repository.DeleteURL, len(splitData))
 	for i, url := range splitData {
 		url = strings.TrimSpace(url)

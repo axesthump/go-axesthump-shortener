@@ -146,7 +146,7 @@ func (a *AppHandler) addListURLRest(w http.ResponseWriter, r *http.Request) {
 	}
 	userID := r.Context().Value(myMiddleware.UserIDKey).(uint32)
 	var urlsForShort []addListURLsRequest
-	if err := json.Unmarshal(body, &urlsForShort); err != nil {
+	if err = json.Unmarshal(body, &urlsForShort); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

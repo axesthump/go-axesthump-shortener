@@ -63,8 +63,8 @@ func (a *authService) generateCookie(w http.ResponseWriter) uint32 {
 	h := hmac.New(sha256.New, a.secretKey)
 	h.Write(newUserIDBytes)
 	hash := h.Sum(nil)
-	res := append(newUserIDBytes, hash...)
-	token := hex.EncodeToString(res)
+	newUserIDBytes = append(newUserIDBytes, hash...)
+	token := hex.EncodeToString(newUserIDBytes)
 	newCookie := &http.Cookie{
 		Name:  "auth",
 		Value: token,

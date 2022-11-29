@@ -41,7 +41,7 @@ type Repository interface {
 	// CreateShortURLs creates short urls. Returns slice short urls if operations success or error.
 	CreateShortURLs(ctx context.Context, beginURL string, urls []URLWithID, userID uint32) ([]URLWithID, error)
 
-	//GetFullURL returns full url by short url.
+	// GetFullURL returns full url by short url.
 	GetFullURL(ctx context.Context, shortURL int64) (string, error)
 
 	// GetAllURLs returns all urls owned specific user.

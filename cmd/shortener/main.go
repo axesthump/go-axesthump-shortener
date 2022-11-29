@@ -43,5 +43,4 @@ func main() {
 		log.Fatal(http.ListenAndServe(conf.ServerAddr, appHandler.Router))
 	}()
 	<-done
-	os.Exit(0)
 }
