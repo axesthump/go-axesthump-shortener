@@ -22,6 +22,7 @@ type AppConfig struct {
 	Conn            *pgx.Conn
 	UserIDGenerator *generator.IDGenerator
 	DeleteService   *service.DeleteService
+	IsHTTPS         bool
 
 	storagePath string
 	dbConnURL   string
@@ -116,11 +117,13 @@ func getConsoleArgs() *AppConfig {
 		os.Getenv("DATABASE_DSN"),
 		"db conn",
 	)
+	isHttps := flag.Bool("s", false, "https connection")
 	flag.Parse()
 
 	return &AppConfig{
 		ServerAddr:  *serverAddr,
 		BaseURL:     *baseURL,
+		IsHTTPS:     *isHttps,
 		storagePath: *storagePath,
 		dbConnURL:   *dbConnect,
 	}
