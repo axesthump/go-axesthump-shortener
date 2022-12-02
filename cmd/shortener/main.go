@@ -11,6 +11,12 @@ import (
 	"syscall"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
 func handleShutdown(signalHandler chan os.Signal, done chan bool, conf *config.AppConfig) {
 	<-signalHandler
 	err := conf.Repo.Close()
@@ -40,6 +46,7 @@ func main() {
 	go handleShutdown(signalHandler, done, conf)
 	go func() {
 		log.Printf("Start listen server at %s\n", conf.ServerAddr)
+		log.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n", buildVersion, buildDate, buildCommit)
 		log.Fatal(http.ListenAndServe(conf.ServerAddr, appHandler.Router))
 	}()
 	<-done

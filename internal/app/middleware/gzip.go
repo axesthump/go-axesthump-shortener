@@ -57,8 +57,12 @@ func setUnpackBody(r *http.Request) error {
 	if _, err = data.ReadFrom(reader); err != nil {
 		return err
 	}
-	reader.Close()
-	r.Body.Close()
+	if err = reader.Close(); err != nil {
+		return err
+	}
+	if err = r.Body.Close(); err != nil {
+		return err
+	}
 	newBody := io.NopCloser(&data)
 	r.Body = newBody
 	return nil
