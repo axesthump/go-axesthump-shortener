@@ -61,8 +61,8 @@ func Test_authService_validateCookie(t *testing.T) {
 				Value: tt.td.cookieValue,
 			}
 
-			actualValid, actualId := authService.validateCookie(cookie)
-			assert.Equal(t, uint32(0), actualId)
+			actualValid, actualID := authService.validateCookie(cookie)
+			assert.Equal(t, uint32(0), actualID)
 			assert.Equal(t, actualValid, tt.td.isValid)
 		})
 	}
