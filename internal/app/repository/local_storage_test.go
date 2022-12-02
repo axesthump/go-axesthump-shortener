@@ -95,6 +95,7 @@ func TestLocalStorage_CreateShortURL(t *testing.T) {
 		"http://google.com/some/url",
 		12,
 	)
+	assert.NoError(t, err)
 
 	assert.Equal(t, "http://localhost:8080/1", shortURL)
 
