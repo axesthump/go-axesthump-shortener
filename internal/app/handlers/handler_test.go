@@ -564,17 +564,12 @@ func TestAppHandler_addListURLRest(t *testing.T) {
 		baseURL         string
 		dbConn          *pgx.Conn
 	}
-	type args struct {
-		w http.ResponseWriter
-		r *http.Request
-	}
 	type Want struct {
 		needError bool
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		args   args
 		want   Want
 	}{
 		{

@@ -35,13 +35,13 @@ type URLWithID struct {
 
 // Repository define api for work with storage.
 type Repository interface {
-	// CreateShortURL create short url. Returns short url if operations success or error.
+	// CreateShortURL creates short url. Returns short url if operations success or error.
 	CreateShortURL(ctx context.Context, beginURL string, originalURL string, userID uint32) (string, error)
 
-	// CreateShortURLs create short urls. Returns slice short urls if operations success or error.
+	// CreateShortURLs creates short urls. Returns slice short urls if operations success or error.
 	CreateShortURLs(ctx context.Context, beginURL string, urls []URLWithID, userID uint32) ([]URLWithID, error)
 
-	//GetFullURL returns full url by short url.
+	// GetFullURL returns full url by short url.
 	GetFullURL(ctx context.Context, shortURL int64) (string, error)
 
 	// GetAllURLs returns all urls owned specific user.

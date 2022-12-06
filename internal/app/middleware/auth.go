@@ -52,7 +52,7 @@ func (a *authService) Auth(next http.Handler) http.Handler {
 	})
 }
 
-// generateCookie generate new cookie.
+// generateCookie generates new cookie.
 // Hash new user id with secret key, then concatenate user id and hash and convert in to hex.
 func (a *authService) generateCookie(w http.ResponseWriter) uint32 {
 	newUserID := a.idGenerator.GetID()
@@ -63,8 +63,8 @@ func (a *authService) generateCookie(w http.ResponseWriter) uint32 {
 	h := hmac.New(sha256.New, a.secretKey)
 	h.Write(newUserIDBytes)
 	hash := h.Sum(nil)
-	res := append(newUserIDBytes, hash...)
-	token := hex.EncodeToString(res)
+	newUserIDBytes = append(newUserIDBytes, hash...)
+	token := hex.EncodeToString(newUserIDBytes)
 	newCookie := &http.Cookie{
 		Name:  "auth",
 		Value: token,
@@ -73,7 +73,7 @@ func (a *authService) generateCookie(w http.ResponseWriter) uint32 {
 	return uint32(newUserID)
 }
 
-// validateCookie validate cookie.
+// validateCookie validates cookie.
 func (a *authService) validateCookie(cookie *http.Cookie) (bool, uint32) {
 	data, err := hex.DecodeString(cookie.Value)
 	if err != nil {
