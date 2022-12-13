@@ -117,13 +117,13 @@ func getConsoleArgs() *AppConfig {
 		os.Getenv("DATABASE_DSN"),
 		"db conn",
 	)
-	isHttps := flag.Bool("s", false, "https connection")
+	isHTTPS := flag.Bool("s", false, "https connection")
 	flag.Parse()
 
 	return &AppConfig{
 		ServerAddr:  *serverAddr,
 		BaseURL:     *baseURL,
-		IsHTTPS:     *isHttps,
+		IsHTTPS:     *isHTTPS,
 		storagePath: *storagePath,
 		dbConnURL:   *dbConnect,
 	}
