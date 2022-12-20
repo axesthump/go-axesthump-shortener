@@ -3,15 +3,26 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"github.com/jackc/pgx/v5"
 	"go-axesthump-shortener/internal/app/generator"
 	"go-axesthump-shortener/internal/app/repository"
 	"go-axesthump-shortener/internal/app/service"
 	"go-axesthump-shortener/internal/app/util"
+	"io"
 	"log"
 	"os"
+	"strconv"
 )
+
+type ConfFile struct {
+	ServerAddr      string `json:"server_addr"`
+	BaseURL         string `json:"base_url"`
+	FileStoragePass string `json:"file_storage_pass"`
+	DBDsn           string `json:"database_dsn"`
+	EnableHTTPS     bool   `json:"enable_https"`
+}
 
 // AppConfig contains data for configuration
 type AppConfig struct {
@@ -31,7 +42,7 @@ type AppConfig struct {
 // NewAppConfig returns new AppConfig or error if it fails to create
 // Creates and connects a repository based on the flags passed to the program.
 func NewAppConfig() (*AppConfig, error) {
-	appConfig := getConsoleArgs()
+	appConfig := getServerConf()
 	setDBConn(appConfig)
 	if err := setStorage(appConfig); err != nil {
 		return nil, err
@@ -93,38 +104,157 @@ func setStorage(config *AppConfig) error {
 	return nil
 }
 
-// getConsoleArgs fills the configuration with the values from the set flags,
+// getServerConf fills the configuration with the values from the set flags,
 // if they are not present, then fills with the values from the environment changes,
 // if they are also not present, then fills with empty strings.
-func getConsoleArgs() *AppConfig {
+func getServerConf() *AppConfig {
+
 	serverAddr := flag.String(
 		"a",
-		util.GetEnvOrDefault("SERVER_ADDRESS", "localhost:8080"),
+		"",
 		"server address",
 	)
 	baseURL := flag.String(
 		"b",
-		util.GetEnvOrDefault("BASE_URL", "http://localhost:8080"),
+		"",
 		"base url",
 	)
 	storagePath := flag.String(
 		"f",
-		os.Getenv("FILE_STORAGE_PATH"),
+		"",
 		"storage path",
 	)
 	dbConnect := flag.String(
 		"d",
-		os.Getenv("DATABASE_DSN"),
+		"",
 		"db conn",
 	)
-	isHTTPS := flag.Bool("s", false, "https connection")
+	isHTTPS := flag.String(
+		"s",
+		"",
+		"https connection",
+	)
+	confFileShort := flag.String(
+		"c",
+		"",
+		"config file",
+	)
+
+	confFileFull := flag.String(
+		"config",
+		"",
+		"config file",
+	)
+
 	flag.Parse()
 
-	return &AppConfig{
-		ServerAddr:  *serverAddr,
-		BaseURL:     *baseURL,
-		IsHTTPS:     *isHTTPS,
-		storagePath: *storagePath,
-		dbConnURL:   *dbConnect,
+	appConfig := &AppConfig{}
+
+	var confFilePath string
+	if *confFileShort != "" {
+		confFilePath = *confFileShort
 	}
+	if *confFileFull != "" {
+		confFilePath = *confFileFull
+	}
+
+	confFile := &ConfFile{}
+	if confFilePath != "" {
+		confFileNew, err := getConfFile(confFilePath)
+		if err == nil {
+			confFile = confFileNew
+		}
+	}
+
+	if *serverAddr == "" {
+		servAddr := util.GetEnvOrDefault("SERVER_ADDRESS", "")
+		if servAddr == "" {
+			if confFile.ServerAddr == "" {
+				appConfig.ServerAddr = "localhost:8080"
+			} else {
+				appConfig.ServerAddr = confFile.ServerAddr
+			}
+		}
+	} else {
+		appConfig.ServerAddr = *serverAddr
+	}
+
+	if *baseURL == "" {
+		envBaseURL := util.GetEnvOrDefault("BASE_URL", "")
+		if envBaseURL == "" {
+			if confFile.BaseURL == "" {
+				appConfig.BaseURL = "http://localhost:8080"
+			} else {
+				appConfig.BaseURL = confFile.BaseURL
+			}
+		}
+	} else {
+		appConfig.BaseURL = *baseURL
+	}
+
+	if *storagePath == "" {
+		envStoragePath := os.Getenv("FILE_STORAGE_PATH")
+		if envStoragePath == "" {
+			if confFile.FileStoragePass != "" {
+				envStoragePath = appConfig.storagePath
+			}
+			appConfig.storagePath = envStoragePath
+		}
+	} else {
+		appConfig.storagePath = *storagePath
+	}
+
+	if *dbConnect == "" {
+		envDBConnect := os.Getenv("DATABASE_DSN")
+		if envDBConnect == "" {
+			if confFile.DBDsn != "" {
+				envDBConnect = appConfig.storagePath
+			}
+			appConfig.dbConnURL = envDBConnect
+		}
+	} else {
+		appConfig.dbConnURL = *dbConnect
+	}
+
+	if *isHTTPS == "" {
+		envIsHTTPS := os.Getenv("ENABLE_HTTPS")
+		if envIsHTTPS != "" {
+			b, err := strconv.ParseBool(envIsHTTPS)
+			if err != nil {
+				appConfig.IsHTTPS = false
+			} else {
+				appConfig.IsHTTPS = b
+			}
+		} else {
+			appConfig.IsHTTPS = confFile.EnableHTTPS
+		}
+	}
+
+	return appConfig
+}
+
+// getConfFile returns ConfFile
+func getConfFile(path string) (*ConfFile, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	confFile := &ConfFile{}
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(data, confFile)
+	if err != nil {
+		return nil, err
+	}
+
+	err = f.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return confFile, nil
 }
