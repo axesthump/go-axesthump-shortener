@@ -20,6 +20,7 @@ var (
 
 func handleShutdown(signalHandler chan os.Signal, done chan bool, conf *config.AppConfig) {
 	<-signalHandler
+	conf.RequestWait.Wait()
 	err := conf.Repo.Close()
 	if err != nil {
 		panic(err)

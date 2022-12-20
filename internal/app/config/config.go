@@ -14,6 +14,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"sync"
 )
 
 type ConfFile struct {
@@ -34,6 +35,7 @@ type AppConfig struct {
 	UserIDGenerator *generator.IDGenerator
 	DeleteService   *service.DeleteService
 	IsHTTPS         bool
+	RequestWait     *sync.WaitGroup
 
 	storagePath string
 	dbConnURL   string
@@ -43,6 +45,7 @@ type AppConfig struct {
 // Creates and connects a repository based on the flags passed to the program.
 func NewAppConfig() (*AppConfig, error) {
 	appConfig := getServerConf()
+	appConfig.RequestWait = &sync.WaitGroup{}
 	setDBConn(appConfig)
 	if err := setStorage(appConfig); err != nil {
 		return nil, err
