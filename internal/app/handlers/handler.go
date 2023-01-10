@@ -18,6 +18,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -29,6 +30,7 @@ type AppHandler struct {
 	dbConn          *pgx.Conn
 	deleteService   *service.DeleteService
 	Router          chi.Router
+	wg              *sync.WaitGroup
 }
 
 type (
@@ -69,6 +71,7 @@ func NewAppHandler(config *config.AppConfig) *AppHandler {
 		dbConn:          config.Conn,
 		userIDGenerator: config.UserIDGenerator,
 		deleteService:   config.DeleteService,
+		wg:              config.RequestWait,
 	}
 	h.Router = NewRouter(h)
 	return h
@@ -77,6 +80,7 @@ func NewAppHandler(config *config.AppConfig) *AppHandler {
 // NewRouter returns new router.
 func NewRouter(appHandler *AppHandler) chi.Router {
 	r := chi.NewRouter()
+	r.Use(myMiddleware.NewWaitRequest(appHandler.wg).WaitRequest)
 	r.Use(myMiddleware.NewAuthService(appHandler.userIDGenerator).Auth)
 	r.Use(myMiddleware.Gzip)
 	r.Use(middleware.Logger)

@@ -4,6 +4,7 @@ import (
 	_ "github.com/jackc/pgx/v5"
 	"go-axesthump-shortener/internal/app/config"
 	"go-axesthump-shortener/internal/app/handlers"
+	"golang.org/x/crypto/acme/autocert"
 	"log"
 	"net/http"
 	"os"
@@ -19,6 +20,7 @@ var (
 
 func handleShutdown(signalHandler chan os.Signal, done chan bool, conf *config.AppConfig) {
 	<-signalHandler
+	conf.RequestWait.Wait()
 	err := conf.Repo.Close()
 	if err != nil {
 		panic(err)
@@ -47,7 +49,20 @@ func main() {
 	go func() {
 		log.Printf("Start listen server at %s\n", conf.ServerAddr)
 		log.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n", buildVersion, buildDate, buildCommit)
-		log.Fatal(http.ListenAndServe(conf.ServerAddr, appHandler.Router))
+		if conf.IsHTTPS {
+			manager := &autocert.Manager{
+				Cache:  autocert.DirCache("cache-dir"),
+				Prompt: autocert.AcceptTOS,
+			}
+			server := &http.Server{
+				Addr:      conf.ServerAddr,
+				Handler:   appHandler.Router,
+				TLSConfig: manager.TLSConfig(),
+			}
+			log.Fatal(server.ListenAndServeTLS("", ""))
+		} else {
+			log.Fatal(http.ListenAndServe(conf.ServerAddr, appHandler.Router))
+		}
 	}()
 	<-done
 }

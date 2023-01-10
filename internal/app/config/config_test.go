@@ -24,7 +24,7 @@ func Test_getConsoleArgs_with_flags(t *testing.T) {
 		td   testData
 	}{
 		{
-			name: "Test getConsoleArgs from env",
+			name: "Test getServerConf from env",
 			td: testData{
 				serverAddr:  "localhost:8080",
 				baseURL:     "http://localhost:8080",
@@ -42,7 +42,7 @@ func Test_getConsoleArgs_with_flags(t *testing.T) {
 				os.Setenv("FILE_STORAGE_PATH", tt.td.storagePath)
 				os.Setenv("DATABASE_DSN", tt.td.dbConnURL)
 			}
-			conf := getConsoleArgs()
+			conf := getServerConf()
 			assert.Equal(t, tt.td.serverAddr, conf.ServerAddr)
 			assert.Equal(t, tt.td.baseURL, conf.BaseURL)
 			assert.Equal(t, tt.td.storagePath, conf.storagePath)
