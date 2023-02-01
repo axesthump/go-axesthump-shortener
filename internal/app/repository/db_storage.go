@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/jackc/pgx/v5"
 	"github.com/lib/pq"
 	"log"
@@ -199,6 +200,38 @@ func (db *DBStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 // Close closes everything that should be closed in the context of the repository.
 func (db *DBStorage) Close() error {
 	return db.conn.Close(db.ctx)
+}
+
+func (db *DBStorage) GetStats() (map[string]int, error) {
+	countUsers, err := db.getCount("user_id", "")
+	if err != nil {
+		return nil, err
+	}
+	countURLs, err := db.getCount("shortener_id", "is_deleted = FALSE")
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]int{
+		"urls":  countURLs,
+		"users": countUsers,
+	}, nil
+
+}
+
+func (db *DBStorage) getCount(columnName string, selectType string) (int, error) {
+	q := fmt.Sprintf("SELECT COUNT(DISTINCT %s) FROM shortener", columnName)
+	if selectType != "" {
+		q = fmt.Sprintf("%s WHERE %s", q, selectType)
+	}
+
+	var res int
+	row := db.conn.QueryRow(db.ctx, q)
+	err := row.Scan(&res)
+	if err != nil {
+		return -1, err
+	}
+	return res, nil
 }
 
 // convertShortIDs create array with short ids.

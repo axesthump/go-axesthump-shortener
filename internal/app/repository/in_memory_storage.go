@@ -121,6 +121,32 @@ func (s *InMemoryStorage) DeleteURLs(urlsForDelete []DeleteURL) error {
 	return nil
 }
 
+func (s *InMemoryStorage) GetStats() (map[string]int, error) {
+	s.RLock()
+	defer s.RUnlock()
+	countURLs := 0
+	countUsers := 0
+	checkedURLs := make(map[int64]bool)
+	checkedUsers := make(map[uint32]bool)
+	for shortURL, urlInfo := range s.userURLs {
+		if _, ok := checkedURLs[shortURL]; !ok {
+			if !urlInfo.isDeleted {
+				checkedURLs[shortURL] = true
+				countURLs++
+			}
+		}
+		if _, ok := checkedUsers[urlInfo.userID]; !ok {
+			countUsers++
+			checkedUsers[urlInfo.userID] = true
+		}
+	}
+
+	return map[string]int{
+		"urls":  countURLs,
+		"users": countUsers,
+	}, nil
+}
+
 // Close closes everything that should be closed in the context of the repository.
 func (s *InMemoryStorage) Close() error {
 	s.idGenerator.Cancel()

@@ -17,12 +17,14 @@ import (
 	"sync"
 )
 
+// ConfFile contains data for configuration from json file
 type ConfFile struct {
 	ServerAddr      string `json:"server_addr"`
 	BaseURL         string `json:"base_url"`
 	FileStoragePass string `json:"file_storage_pass"`
 	DBDsn           string `json:"database_dsn"`
 	EnableHTTPS     bool   `json:"enable_https"`
+	TrustedSubnet   string `json:"trusted_subnet"`
 }
 
 // AppConfig contains data for configuration
@@ -35,6 +37,7 @@ type AppConfig struct {
 	UserIDGenerator *generator.IDGenerator
 	DeleteService   *service.DeleteService
 	IsHTTPS         bool
+	TrustedSubnet   string
 	RequestWait     *sync.WaitGroup
 
 	storagePath string
@@ -149,6 +152,12 @@ func getServerConf() *AppConfig {
 		"config file",
 	)
 
+	trustedSubnet := flag.String(
+		"t",
+		"",
+		"trusted subnet",
+	)
+
 	flag.Parse()
 
 	appConfig := &AppConfig{}
@@ -232,6 +241,12 @@ func getServerConf() *AppConfig {
 			appConfig.IsHTTPS = confFile.EnableHTTPS
 		}
 	}
+
+	if *trustedSubnet == "" {
+		envTrustedSubnet := os.Getenv("TRUSTED_SUBNET")
+		trustedSubnet = &envTrustedSubnet
+	}
+	appConfig.TrustedSubnet = *trustedSubnet
 
 	return appConfig
 }

@@ -50,6 +50,9 @@ type Repository interface {
 	// DeleteURLs delete url from urlsForDelete.
 	DeleteURLs(urlsForDelete []DeleteURL) error
 
+	// GetStats returns count of users and shortURLs
+	GetStats() (map[string]int, error)
+
 	// Close closes everything that should be closed in the context of the repository.
 	Close() error
 }

@@ -16,6 +16,7 @@ import (
 	"go-axesthump-shortener/internal/app/service"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"strconv"
 	"sync"
@@ -31,6 +32,7 @@ type AppHandler struct {
 	deleteService   *service.DeleteService
 	Router          chi.Router
 	wg              *sync.WaitGroup
+	trustedSubnet   string
 }
 
 type (
@@ -72,6 +74,7 @@ func NewAppHandler(config *config.AppConfig) *AppHandler {
 		userIDGenerator: config.UserIDGenerator,
 		deleteService:   config.DeleteService,
 		wg:              config.RequestWait,
+		trustedSubnet:   config.TrustedSubnet,
 	}
 	h.Router = NewRouter(h)
 	return h
@@ -101,6 +104,7 @@ func NewRouter(appHandler *AppHandler) chi.Router {
 			r.Get("/", appHandler.listURLs)
 			r.Delete("/", appHandler.deleteListURLs)
 		})
+		r.Get("/internal/stats", appHandler.getStats)
 	})
 
 	return r
@@ -290,6 +294,35 @@ func (a *AppHandler) createAddURLResponse(w http.ResponseWriter, shortURL string
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// getStats returns count of users and shortURLs
+func (a *AppHandler) getStats(w http.ResponseWriter, r *http.Request) {
+	_, ipNetTrusted, err := net.ParseCIDR(a.trustedSubnet)
+	if err != nil {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	realIP := r.Header.Get("X-Real-IP")
+	ip := net.ParseIP(realIP)
+
+	if ipNetTrusted.Contains(ip) {
+		stats, err := a.repo.GetStats()
+		if err != nil {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		js, err := json.Marshal(stats)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		sendResponse(w, js, http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
 }
 
 // sendResponse writes res in w with status and handle errors.

@@ -235,6 +235,49 @@ func (ls *LocalStorage) GetAllURLs(ctx context.Context, beginURL string, userID 
 	return urls
 }
 
+func (ls *LocalStorage) GetStats() (map[string]int, error) {
+	ls.RLock()
+	defer ls.RUnlock()
+	fileForRead, err := os.OpenFile(ls.file.Name(), os.O_RDONLY, 0777)
+	if err != nil {
+		return nil, err
+	}
+	countURLs := 0
+	countUsers := 0
+	checkedURLs := make(map[int64]bool)
+	checkedUsers := make(map[int64]bool)
+	scanner := bufio.NewScanner(fileForRead)
+	for scanner.Scan() {
+		data := scanner.Text()
+		urlData := strings.Split(data, splitSeq)
+		if len(urlData) != countDataInRow {
+			continue
+		}
+		storageUserID, err := strconv.ParseInt(urlData[0], 10, 64)
+		if err != nil {
+			continue
+		}
+		shortURL, err := strconv.ParseInt(urlData[1], 10, 64)
+		if err != nil {
+			continue
+		}
+		if _, ok := checkedURLs[shortURL]; !ok {
+			if urlData[3] != "true" {
+				checkedURLs[shortURL] = true
+				countURLs++
+			}
+		}
+		if _, ok := checkedUsers[storageUserID]; !ok {
+			countUsers++
+			checkedUsers[storageUserID] = true
+		}
+	}
+	return map[string]int{
+		"urls":  countURLs,
+		"users": countUsers,
+	}, nil
+}
+
 // Close closes everything that should be closed in the context of the repository.
 func (ls *LocalStorage) Close() error {
 	return ls.file.Close()
