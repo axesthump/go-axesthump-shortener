@@ -82,7 +82,7 @@ func (mr *MockRepositoryMockRecorder) CreateShortURLs(arg0, arg1, arg2, arg3 int
 // DeleteURLs mocks base method.
 func (m *MockRepository) DeleteURLs(arg0 []repository.DeleteURL) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "deleteURLs", arg0)
+	ret := m.ctrl.Call(m, "DeleteURLs", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -90,7 +90,7 @@ func (m *MockRepository) DeleteURLs(arg0 []repository.DeleteURL) error {
 // DeleteURLs indicates an expected call of DeleteURLs.
 func (mr *MockRepositoryMockRecorder) DeleteURLs(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "deleteURLs", reflect.TypeOf((*MockRepository)(nil).DeleteURLs), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteURLs", reflect.TypeOf((*MockRepository)(nil).DeleteURLs), arg0)
 }
 
 // GetAllURLs mocks base method.
@@ -120,4 +120,19 @@ func (m *MockRepository) GetFullURL(arg0 context.Context, arg1 int64) (string, e
 func (mr *MockRepositoryMockRecorder) GetFullURL(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFullURL", reflect.TypeOf((*MockRepository)(nil).GetFullURL), arg0, arg1)
+}
+
+// GetStats mocks base method.
+func (m *MockRepository) GetStats() (map[string]int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetStats")
+	ret0, _ := ret[0].(map[string]int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetStats indicates an expected call of GetStats.
+func (mr *MockRepositoryMockRecorder) GetStats() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStats", reflect.TypeOf((*MockRepository)(nil).GetStats))
 }

@@ -55,6 +55,10 @@ func (m *mockStorage) GetAllURLs(ctx context.Context, beginURL string, userID ui
 	return make([]repository.URLInfo, 0)
 }
 
+func (m *mockStorage) GetStats() (map[string]int, error) {
+	return nil, nil
+}
+
 func (m *mockStorage) Close() error {
 	return nil
 }
